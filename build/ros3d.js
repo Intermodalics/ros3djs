@@ -465,7 +465,7 @@ ROS3D.DepthCloud.prototype.initStreamer = function() {
 
     var that = this;
 
-    setInterval(function() {
+    this.interval = setInterval(function() {
       if (that.isMjpeg || that.video.readyState === that.video.HAVE_ENOUGH_DATA) {
         that.texture.needsUpdate = true;
       }
@@ -488,6 +488,9 @@ ROS3D.DepthCloud.prototype.startStream = function() {
 ROS3D.DepthCloud.prototype.stopStream = function() {
   if (!this.isMjpeg) {
     this.video.pause();
+  } else {
+    this.video.src = '';
+    clearInterval(this.interval);
   }
 };
 
