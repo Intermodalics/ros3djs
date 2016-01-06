@@ -44,7 +44,7 @@ ROS3D.CloseCloud = function(options) {
   if (!this.isMjpeg) {
     this.video.loop = true;
   }
-  
+
   this.video.src = this.url;
   this.video.crossOrigin = 'Anonymous';
   this.video.setAttribute('crossorigin', 'Anonymous');
@@ -320,7 +320,7 @@ ROS3D.CloseCloud.prototype.initStreamer = function() {
  */
 ROS3D.CloseCloud.prototype.startStream = function() {
   if (!this.isMjpeg) {
-    this.video.play();  
+    this.video.play();
   }
 };
 
@@ -329,7 +329,7 @@ ROS3D.CloseCloud.prototype.startStream = function() {
  */
 ROS3D.CloseCloud.prototype.stopStream = function() {
   if (!this.isMjpeg) {
-    this.video.pause();  
+    this.video.pause();
   }
   this.video.src = ''; // forcefully silence the video streaming url.
   clearInterval(this.interval);
