@@ -93,5 +93,15 @@ ROS3D.MarkerArrayClient = function(options) {
     
     that.emit('change');
   });
+
+  this.removeArray = function() {
+    arrayTopic.unsubscribe();
+    for (var key in that.markers) {
+      if (that.markers.hasOwnProperty(key)) {
+        that.rootObject.remove( that.markers[key] );
+        that.markers[key].unsubscribeTf();
+      }
+    }
+  };
 };
 ROS3D.MarkerArrayClient.prototype.__proto__ = EventEmitter2.prototype;
