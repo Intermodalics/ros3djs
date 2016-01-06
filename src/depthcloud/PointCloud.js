@@ -63,6 +63,9 @@ ROS3D.PointCloud = function(options) {
 ROS3D.PointCloud.prototype.startStream = function() {
   var that = this;
   this.rosTopic.subscribe(function(message) {
+    // WARNING: dcodeIO.ByteBuffer is a dependency we impose;
+    // it only works for us since we include it in our interface
+    // Do we want to incorporate it properly as a dependency in the build process?
     var floatView = dcodeIO.ByteBuffer.wrap(message.data, 'base64', dcodeIO.ByteBuffer.LITTLE_ENDIAN);
     for (var i = 0, l = message.width * message.height; i < that.geometry.vertices.length; i++) {
       if ( i < l ) {
