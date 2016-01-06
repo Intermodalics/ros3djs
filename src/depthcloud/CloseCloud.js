@@ -10,6 +10,7 @@
  * @param options - object with following keys:
  *
  *   * url - the URL of the stream
+ *   * streamType (optional) - the stream type: mjpeg or vp8 video (defaults to vp8)
  *   * f (optional) - the camera's focal length (defaults to standard Kinect calibration)
  *   * pointSize (optional) - point size (pixels) for rendered point cloud
  *   * width (optional) - width of the depthcloud encoded video stream
@@ -23,6 +24,7 @@ ROS3D.CloseCloud = function(options) {
 
   this.options = options || {};
   this.url = options.url;
+  this.streamType = options.streamType || 'vp8';
   this.f = options.f || 526;
   this.pointSize = options.pointSize || 3;
   this.width = options.width || 1024;
@@ -31,22 +33,21 @@ ROS3D.CloseCloud = function(options) {
   this.varianceThreshold = options.varianceThreshold || 0.000016667;
 
   var metaLoaded = false;
-  this.video = document.createElement('video');
+
+  this.isMjpeg = this.streamType.toLowerCase() === 'mjpeg';
+
+  this.video = document.createElement(this.isMjpeg ? 'img' : 'video');
   this.video.width = this.width;
   this.video.height = this.height;
-  this.video.addEventListener('loadedmetadata', this.metaLoaded.bind(this), false);
+  this.video.addEventListener(this.isMjpeg ? 'load' : 'loadedmetadata', this.metaLoaded.bind(this), false);
 
-  this.video.loop = true;
+  if (!this.isMjpeg) {
+    this.video.loop = true;
+  }
+  
   this.video.src = this.url;
   this.video.crossOrigin = 'Anonymous';
   this.video.setAttribute('crossorigin', 'Anonymous');
-
-  this.intervalCallback = null;
-  this.stopCloud = function() {
-  this.video.pause();
-  this.video.src = undefined; // forcefully silence the video streaming url.
-  clearInterval(this.intervalCallback);
-  };
 
   // define custom shaders
   this.vertex_shader = [
@@ -306,8 +307,8 @@ ROS3D.CloseCloud.prototype.initStreamer = function() {
     this.add(this.mesh);
 
     var that = this;
-    this.intervalCallback = setInterval(function() {
-      if (that.video.readyState === that.video.HAVE_ENOUGH_DATA) {
+    this.interval = setInterval(function() {
+      if (that.isMjpeg || that.video.readyState === that.video.HAVE_ENOUGH_DATA) {
         that.dctexture.needsUpdate = true;
       }
     }, 1000 / 30);
@@ -318,12 +319,18 @@ ROS3D.CloseCloud.prototype.initStreamer = function() {
  * Start video playback
  */
 ROS3D.CloseCloud.prototype.startStream = function() {
-  this.video.play();
+  if (!this.isMjpeg) {
+    this.video.play();  
+  }
 };
 
 /**
  * Stop video playback
  */
 ROS3D.CloseCloud.prototype.stopStream = function() {
-  this.video.pause();
+  if (!this.isMjpeg) {
+    this.video.pause();  
+  }
+  this.video.src = ''; // forcefully silence the video streaming url.
+  clearInterval(this.interval);
 };
