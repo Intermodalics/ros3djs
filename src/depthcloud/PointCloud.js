@@ -43,12 +43,12 @@ ROS3D.PointCloud = function(options) {
 
     // subscribe to the topic
     this.rosTopic = new ROSLIB.Topic({
-	ros : ros,
-	name : topic,
-	messageType : 'sensor_msgs/PointCloud2',
-	compression : 'png',
-	queue_length  : 0,
-	throttle_rate : 500
+      ros : ros,
+      name : topic,
+      messageType : 'sensor_msgs/PointCloud2',
+      compression : 'png',
+      queue_length  : 0,
+      throttle_rate : 500
     });
 
 };
@@ -61,28 +61,28 @@ ROS3D.PointCloud = function(options) {
  * help in speeding up : receiving as png and no longer decompressing in javascript.
  */
 ROS3D.PointCloud.prototype.startStream = function() {
-    var that = this;
-    this.rosTopic.subscribe(function(message) {
-	var floatView = dcodeIO.ByteBuffer.wrap(message.data, 'base64', dcodeIO.ByteBuffer.LITTLE_ENDIAN);
-	for (var i = 0, l = message.width * message.height; i < that.geometry.vertices.length; i++) {
-            if ( i < l ) {
-		that.geometry.vertices[i].x = floatView.readFloat32();
-		that.geometry.vertices[i].y = floatView.readFloat32();
-		that.geometry.vertices[i].z = floatView.readFloat32();
-		floatView.offset += 4; // skip empty channel
-		that.geometry.colors[i].b   = floatView.readUint8() / 255.0;
-		that.geometry.colors[i].g   = floatView.readUint8() / 255.0;
-		that.geometry.colors[i].r   = floatView.readUint8() / 255.0;
-		floatView.offset += message.point_step - (3 + 4 + 3*4); //  - (rgb + skip empty + 3 floats(xyz) )
-            } else {
-		that.geometry.vertices[i].x = that.geometry.vertices[i-1].x;
-		that.geometry.vertices[i].y = that.geometry.vertices[i-1].y;
-		that.geometry.vertices[i].z = that.geometry.vertices[i-1].z;
-            }
-	}
-	that.geometry.verticesNeedUpdate = true;
-	that.geometry.colorsNeedUpdate = true;
-    });
+  var that = this;
+  this.rosTopic.subscribe(function(message) {
+    var floatView = dcodeIO.ByteBuffer.wrap(message.data, 'base64', dcodeIO.ByteBuffer.LITTLE_ENDIAN);
+    for (var i = 0, l = message.width * message.height; i < that.geometry.vertices.length; i++) {
+      if ( i < l ) {
+        that.geometry.vertices[i].x = floatView.readFloat32();
+        that.geometry.vertices[i].y = floatView.readFloat32();
+        that.geometry.vertices[i].z = floatView.readFloat32();
+        floatView.offset += 4; // skip empty channel
+        that.geometry.colors[i].b   = floatView.readUint8() / 255.0;
+        that.geometry.colors[i].g   = floatView.readUint8() / 255.0;
+        that.geometry.colors[i].r   = floatView.readUint8() / 255.0;
+        floatView.offset += message.point_step - (3 + 4 + 3*4); //  - (rgb + skip empty + 3 floats(xyz) )
+      } else {
+        that.geometry.vertices[i].x = that.geometry.vertices[i-1].x;
+        that.geometry.vertices[i].y = that.geometry.vertices[i-1].y;
+        that.geometry.vertices[i].z = that.geometry.vertices[i-1].z;
+      }
+    }
+    that.geometry.verticesNeedUpdate = true;
+    that.geometry.colorsNeedUpdate = true;
+  });
 };
 
 /**
