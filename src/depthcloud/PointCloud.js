@@ -23,6 +23,7 @@ ROS3D.PointCloud = function(options) {
   this.width = options.width || 640;
   this.height = options.height || 480;
   this.whiteness = options.whiteness || 0;
+  this.queue_length = options.queue_length || 0;
 
   var ros = options.ros;
   var topic = options.topic;
@@ -47,7 +48,7 @@ ROS3D.PointCloud = function(options) {
       name : topic,
       messageType : 'sensor_msgs/PointCloud2',
       compression : 'png',
-      queue_length  : 0,
+      queue_length  : this.queue_length,
       throttle_rate : 500
     });
 
@@ -63,26 +64,48 @@ ROS3D.PointCloud = function(options) {
 ROS3D.PointCloud.prototype.startStream = function() {
   var that = this;
   this.rosTopic.subscribe(function(message) {
-    // WARNING: dcodeIO.ByteBuffer is a dependency we impose;
-    // it only works for us since we include it in our interface
-    // Do we want to incorporate it properly as a dependency in the build process?
-    var floatView = dcodeIO.ByteBuffer.wrap(message.data, 'base64', dcodeIO.ByteBuffer.LITTLE_ENDIAN);
-    for (var i = 0, l = message.width * message.height; i < that.geometry.vertices.length; i++) {
+    //console.log('pc in!');
+    var floatView = dcodeIO.ByteBuffer.wrap(message.data, 'base64', dcodeIO.ByteBuffer.LITTLE_ENDIAN),
+        l = message.width * message.height,
+        extraOffset;
+
+    for (var i = 0; i < that.geometry.vertices.length; i++) {
       if ( i < l ) {
         that.geometry.vertices[i].x = floatView.readFloat32();
         that.geometry.vertices[i].y = floatView.readFloat32();
         that.geometry.vertices[i].z = floatView.readFloat32();
         floatView.offset += 4; // skip empty channel
-        that.geometry.colors[i].b   = floatView.readUint8() / 255.0;
-        that.geometry.colors[i].g   = floatView.readUint8() / 255.0;
-        that.geometry.colors[i].r   = floatView.readUint8() / 255.0;
-        floatView.offset += message.point_step - (3 + 4 + 3*4); //  - (rgb + skip empty + 3 floats(xyz) )
+        extraOffset = 4*3 + 4;
+
+        switch (message.point_step) {
+          // message contains normals; colors are in the third channel
+          case 48:
+            floatView.offset += 16;
+            extraOffset += 16;
+            /* falls through */
+          case 32:
+            that.geometry.colors[i].b = floatView.readUint8() / 255.0;
+            that.geometry.colors[i].g = floatView.readUint8() / 255.0;
+            that.geometry.colors[i].r = floatView.readUint8() / 255.0;
+            extraOffset += 3;
+            break;
+          // 16-byte point step messages don't have colors
+          case 16:
+            /* falls through */
+          default:
+        }
+
+        // adjust offset for the next point
+        floatView.offset += message.point_step - extraOffset;
+        
       } else {
         that.geometry.vertices[i].x = that.geometry.vertices[i-1].x;
         that.geometry.vertices[i].y = that.geometry.vertices[i-1].y;
         that.geometry.vertices[i].z = that.geometry.vertices[i-1].z;
       }
     }
+    //console.log('pc done! ' + message.width + ' ' + message.height + ' ' + that.geometry.vertices.length);
+    //console.log('colors : ' + that.geometry.colors[10000].r + ' ' + that.geometry.colors[10000].g + ' ' + that.geometry.colors[10000].b + ' ' );
     that.geometry.verticesNeedUpdate = true;
     that.geometry.colorsNeedUpdate = true;
   });
