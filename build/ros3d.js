@@ -4183,15 +4183,7 @@ ROS3D.SceneNode = function(options) {
 
   // save the TF handler so we can remove it later
   this.tfUpdate = function(msg) {
-
-    // apply the transform
-    var tf = new ROSLIB.Transform(msg);
-    var poseTransformed = new ROSLIB.Pose(that.pose);
-    poseTransformed.applyTransform(tf);
-
-    // update the world
-    that.updatePose(poseTransformed);
-    that.visible = true;
+    that.transformPose(msg);
   };
 
   // listen for TF updates
@@ -4231,6 +4223,7 @@ ROS3D.SceneNode.prototype.transformPose = function(transform) {
 
   // update the world
   this.updatePose(poseTransformed);
+  this.visible = true;
 };
 
 /**
