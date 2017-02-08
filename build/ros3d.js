@@ -2634,7 +2634,7 @@ ROS3D.MarkerArrayClient = function(options) {
     compression : 'png',
     queue_length  : 2
   });
-  
+
   arrayTopic.subscribe(function(arrayMessage) {
 
     arrayMessage.markers.forEach(function(message) {
@@ -2682,7 +2682,7 @@ ROS3D.MarkerArrayClient = function(options) {
         console.warn('Received marker message with unknown action identifier "'+message.action+'"');
       }
     });
-    
+
     that.emit('change');
   });
 
@@ -2694,6 +2694,7 @@ ROS3D.MarkerArrayClient = function(options) {
         that.markers[key].unsubscribeTf();
       }
     }
+    that.markers = {};
   };
 };
 ROS3D.MarkerArrayClient.prototype.__proto__ = EventEmitter2.prototype;
