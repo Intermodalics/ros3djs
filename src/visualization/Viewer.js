@@ -23,6 +23,10 @@ ROS3D.Viewer = function(options) {
   var that = this;
   options = options || {};
   var divID = options.divID;
+  var canvas = (!!options.canvas &&
+                options.canvas.nodeName.toLowerCase() === 'canvas')
+                  ? options.canvas
+                  : undefined;
   var width = options.width;
   var height = options.height;
   var background = options.background || '#111111';
@@ -40,6 +44,7 @@ ROS3D.Viewer = function(options) {
 
   // create the canvas to render to
   this.renderer = new THREE.WebGLRenderer({
+    canvas: canvas,
     antialias : antialias,
     alpha: true
   });
@@ -106,7 +111,11 @@ ROS3D.Viewer = function(options) {
   }
 
   // add the renderer to the page
-  document.getElementById(divID).appendChild(this.renderer.domElement);
+  if (divID) {
+    document.getElementById(divID).appendChild(this.renderer.domElement);
+  } else if (!canvas) {
+    throw new Error('No canvas nor HTML container provided for rendering.');
+  }
 
   // begin the animation
   draw();
