@@ -854,6 +854,8 @@ ROS3D.PointCloud = function(options) {
   this.height = options.height || 480;
   this.whiteness = options.whiteness || 0;
   this.queue_length = options.queue_length || 0;
+  this.opacity = options.opacity || 1;
+  this.transparent = options.transparent || false;
 
   var ros = options.ros;
   var topic = options.topic;
@@ -866,7 +868,14 @@ ROS3D.PointCloud = function(options) {
       this.geometry.vertices.push(vertex);
       this.geometry.colors.push( new THREE.Color() );
     }
-    this.mesh = new THREE.PointCloud( this.geometry, new THREE.PointCloudMaterial( { size: this.pointSize / 1000.0 } ) );
+    this.mesh = new THREE.PointCloud(
+      this.geometry,
+      new THREE.PointCloudMaterial({
+        size: this.pointSize / 1000.0,
+        opacity: this.opacity,
+        transparent: this.transparent
+      })
+    );
     this.mesh.material.vertexColors = THREE.VertexColors;
 
     // if we don't clear this, the PC gets undrawn when we get too close with the camera, even if it doesn't seem close.
