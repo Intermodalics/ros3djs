@@ -17,7 +17,7 @@
  */
 ROS3D.PointCloud = function(options) {
   options = options || {};
-  
+
   this.topic = options.topic;
   this.pointSize = options.pointSize || 3;
   this.width = options.width || 640;
@@ -30,36 +30,37 @@ ROS3D.PointCloud = function(options) {
   var ros = options.ros;
   var topic = options.topic;
 
-  
-    this.geometry = new THREE.Geometry();
-    
-    for (var i = 0, l = this.width * this.height; i < l; i++) {
-      var vertex = new THREE.Vector3();
-      this.geometry.vertices.push(vertex);
-      this.geometry.colors.push( new THREE.Color() );
-    }
-    this.mesh = new THREE.PointCloud(
-      this.geometry,
-      new THREE.PointCloudMaterial({
-        size: this.pointSize / 1000.0,
-        opacity: this.opacity,
-        transparent: this.transparent
-      })
-    );
-    this.mesh.material.vertexColors = THREE.VertexColors;
+  var positions = new Float32Array(this.width * this.height * 3);
+  var colors = new Float32Array(this.width * this.height * 3);
 
-    // if we don't clear this, the PC gets undrawn when we get too close with the camera, even if it doesn't seem close.
-    this.mesh.frustumCulled = false;
+  this.geometry = new THREE.BufferGeometry();
 
-    // subscribe to the topic
-    this.rosTopic = new ROSLIB.Topic({
-      ros : ros,
-      name : topic,
-      messageType : 'sensor_msgs/PointCloud2',
-      compression : 'png',
-      queue_length  : this.queue_length,
-      throttle_rate : 500
-    });
+  this.geometry.addAttribute('position', new THREE.BufferAttribute(positions, 3));
+  this.geometry.addAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+  this.mesh = new THREE.PointCloud(
+    this.geometry,
+    new THREE.PointCloudMaterial({
+      size: this.pointSize / 1000.0,
+      opacity: this.opacity,
+      transparent: this.transparent,
+      vertexColors: THREE.VertexColors
+    })
+  );
+
+  // If we don't clear this, the PC gets undrawn when we get too close with the camera,
+  // even if it doesn't seem close.
+  this.mesh.frustumCulled = false;
+
+  // subscribe to the topic
+  this.rosTopic = new ROSLIB.Topic({
+    ros : ros,
+    name : topic,
+    messageType : 'sensor_msgs/PointCloud2',
+    compression : 'png',
+    queue_length  : this.queue_length,
+    throttle_rate : 500
+  });
 
 };
 
@@ -73,16 +74,19 @@ ROS3D.PointCloud = function(options) {
 ROS3D.PointCloud.prototype.startStream = function() {
   var that = this;
   this.rosTopic.subscribe(function(message) {
-    //console.log('pc in!');
     var floatView = dcodeIO.ByteBuffer.wrap(message.data, 'base64', dcodeIO.ByteBuffer.LITTLE_ENDIAN),
+        position = that.geometry.attributes.position.array,
+        color = that.geometry.attributes.color.array,
         l = message.width * message.height,
+        i = 0, i3 = 0,
         extraOffset;
 
-    for (var i = 0; i < that.geometry.vertices.length; i++) {
+    for (; i < that.width * that.height; i++, i3 += 3) {
+
       if ( i < l ) {
-        that.geometry.vertices[i].x = floatView.readFloat32();
-        that.geometry.vertices[i].y = floatView.readFloat32();
-        that.geometry.vertices[i].z = floatView.readFloat32();
+        position[i3] = floatView.readFloat32();
+        position[i3 + 1] = floatView.readFloat32();
+        position[i3 + 2] = floatView.readFloat32();
         floatView.offset += 4; // skip empty channel
         extraOffset = 4*3 + 4;
 
@@ -93,9 +97,9 @@ ROS3D.PointCloud.prototype.startStream = function() {
             extraOffset += 16;
             /* falls through */
           case 32:
-            that.geometry.colors[i].b = floatView.readUint8() / 255.0;
-            that.geometry.colors[i].g = floatView.readUint8() / 255.0;
-            that.geometry.colors[i].r = floatView.readUint8() / 255.0;
+            color[i3 + 2] = floatView.readUint8() / 255.0; // B
+            color[i3 + 1] = floatView.readUint8() / 255.0; // G
+            color[i3] = floatView.readUint8() / 255.0; // R
             extraOffset += 3;
             break;
           // 16-byte point step messages don't have colors
@@ -106,17 +110,16 @@ ROS3D.PointCloud.prototype.startStream = function() {
 
         // adjust offset for the next point
         floatView.offset += message.point_step - extraOffset;
-        
       } else {
-        that.geometry.vertices[i].x = that.geometry.vertices[i-1].x;
-        that.geometry.vertices[i].y = that.geometry.vertices[i-1].y;
-        that.geometry.vertices[i].z = that.geometry.vertices[i-1].z;
+        // Converge all other points which should be invisible into the "last" point of the
+        // "visible" cloud (effectively reset)
+        position[i3] = position[i3-3].x;
+        position[i3 + 1] = position[i3-2].y;
+        position[i3 + 2] = position[i3-1].z;
       }
     }
-    //console.log('pc done! ' + message.width + ' ' + message.height + ' ' + that.geometry.vertices.length);
-    //console.log('colors : ' + that.geometry.colors[10000].r + ' ' + that.geometry.colors[10000].g + ' ' + that.geometry.colors[10000].b + ' ' );
-    that.geometry.verticesNeedUpdate = true;
-    that.geometry.colorsNeedUpdate = true;
+    that.geometry.attributes.position.needsUpdate = true;
+    that.geometry.attributes.color.needsUpdate = true;
   });
 };
 
