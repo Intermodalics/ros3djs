@@ -48,7 +48,7 @@ ROS3D.PointCloud = function(options) {
     })
   );
 
-  // If we don't clear this, the PC gets undrawn when we get too close with the camera,
+  // If we don't clear this, the point cloud gets undrawn when we get too close with the camera,
   // even if it doesn't seem close.
   this.mesh.frustumCulled = false;
 
@@ -72,35 +72,42 @@ ROS3D.PointCloud = function(options) {
  * help in speeding up : receiving as png and no longer decompressing in javascript.
  */
 ROS3D.PointCloud.prototype.startStream = function() {
-  var that = this;
+  var that = this,
+      position = that.geometry.attributes.position.array,
+      color    = that.geometry.attributes.color.array;
+
   this.rosTopic.subscribe(function(message) {
-    var floatView = dcodeIO.ByteBuffer.wrap(message.data, 'base64', dcodeIO.ByteBuffer.LITTLE_ENDIAN),
-        position = that.geometry.attributes.position.array,
-        color = that.geometry.attributes.color.array,
-        l = message.width * message.height,
-        i = 0, i3 = 0,
-        extraOffset;
+    var bufferView = new ROS3D.BufferView({
+      data: message.data,
+      type: 'base64',
+      endian: ROS3D.LITTLE_ENDIAN
+    });
+    var l = message.width * message.height, i = 0, i3 = 0;
+
+    // Guard against empty pointcloud (zero points: zero message width or height).
+    if (l === 0) {
+      return;
+    }
 
     for (; i < that.width * that.height; i++, i3 += 3) {
 
       if ( i < l ) {
-        position[i3] = floatView.readFloat32();
-        position[i3 + 1] = floatView.readFloat32();
-        position[i3 + 2] = floatView.readFloat32();
-        floatView.offset += 4; // skip empty channel
-        extraOffset = 4*3 + 4;
+        bufferView.resetSinglePointOffset();
+
+        position[i3]     = bufferView.readFloat32();
+        position[i3 + 1] = bufferView.readFloat32();
+        position[i3 + 2] = bufferView.readFloat32();
+        bufferView.incrementOffset(4); // skip empty channel
 
         switch (message.point_step) {
           // message contains normals; colors are in the third channel
           case 48:
-            floatView.offset += 16;
-            extraOffset += 16;
+            bufferView.incrementOffset(16);
             /* falls through */
           case 32:
-            color[i3 + 2] = floatView.readUint8() / 255.0; // B
-            color[i3 + 1] = floatView.readUint8() / 255.0; // G
-            color[i3] = floatView.readUint8() / 255.0; // R
-            extraOffset += 3;
+            color[i3 + 2] = bufferView.readUint8() / 255.0; // B
+            color[i3 + 1] = bufferView.readUint8() / 255.0; // G
+            color[i3]     = bufferView.readUint8() / 255.0; // R
             break;
           // 16-byte point step messages don't have colors
           case 16:
@@ -109,13 +116,13 @@ ROS3D.PointCloud.prototype.startStream = function() {
         }
 
         // adjust offset for the next point
-        floatView.offset += message.point_step - extraOffset;
+        bufferView.incrementOffset(message.point_step - bufferView.singlePointOffset);
       } else {
         // Converge all other points which should be invisible into the "last" point of the
         // "visible" cloud (effectively reset)
-        position[i3] = position[i3-3].x;
-        position[i3 + 1] = position[i3-2].y;
-        position[i3 + 2] = position[i3-1].z;
+        position[i3]     = position[i3 - 3].x;
+        position[i3 + 1] = position[i3 - 2].y;
+        position[i3 + 2] = position[i3 - 1].z;
       }
     }
     that.geometry.attributes.position.needsUpdate = true;

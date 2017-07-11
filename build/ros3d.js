@@ -878,7 +878,7 @@ ROS3D.PointCloud = function(options) {
     })
   );
 
-  // If we don't clear this, the PC gets undrawn when we get too close with the camera,
+  // If we don't clear this, the point cloud gets undrawn when we get too close with the camera,
   // even if it doesn't seem close.
   this.mesh.frustumCulled = false;
 
@@ -902,35 +902,42 @@ ROS3D.PointCloud = function(options) {
  * help in speeding up : receiving as png and no longer decompressing in javascript.
  */
 ROS3D.PointCloud.prototype.startStream = function() {
-  var that = this;
+  var that = this,
+      position = that.geometry.attributes.position.array,
+      color    = that.geometry.attributes.color.array;
+
   this.rosTopic.subscribe(function(message) {
-    var floatView = dcodeIO.ByteBuffer.wrap(message.data, 'base64', dcodeIO.ByteBuffer.LITTLE_ENDIAN),
-        position = that.geometry.attributes.position.array,
-        color = that.geometry.attributes.color.array,
-        l = message.width * message.height,
-        i = 0, i3 = 0,
-        extraOffset;
+    var bufferView = new ROS3D.BufferView({
+      data: message.data,
+      type: 'base64',
+      endian: ROS3D.LITTLE_ENDIAN
+    });
+    var l = message.width * message.height, i = 0, i3 = 0;
+
+    // Guard against empty pointcloud (zero points: zero message width or height).
+    if (l === 0) {
+      return;
+    }
 
     for (; i < that.width * that.height; i++, i3 += 3) {
 
       if ( i < l ) {
-        position[i3] = floatView.readFloat32();
-        position[i3 + 1] = floatView.readFloat32();
-        position[i3 + 2] = floatView.readFloat32();
-        floatView.offset += 4; // skip empty channel
-        extraOffset = 4*3 + 4;
+        bufferView.resetSinglePointOffset();
+
+        position[i3]     = bufferView.readFloat32();
+        position[i3 + 1] = bufferView.readFloat32();
+        position[i3 + 2] = bufferView.readFloat32();
+        bufferView.incrementOffset(4); // skip empty channel
 
         switch (message.point_step) {
           // message contains normals; colors are in the third channel
           case 48:
-            floatView.offset += 16;
-            extraOffset += 16;
+            bufferView.incrementOffset(16);
             /* falls through */
           case 32:
-            color[i3 + 2] = floatView.readUint8() / 255.0; // B
-            color[i3 + 1] = floatView.readUint8() / 255.0; // G
-            color[i3] = floatView.readUint8() / 255.0; // R
-            extraOffset += 3;
+            color[i3 + 2] = bufferView.readUint8() / 255.0; // B
+            color[i3 + 1] = bufferView.readUint8() / 255.0; // G
+            color[i3]     = bufferView.readUint8() / 255.0; // R
             break;
           // 16-byte point step messages don't have colors
           case 16:
@@ -939,13 +946,13 @@ ROS3D.PointCloud.prototype.startStream = function() {
         }
 
         // adjust offset for the next point
-        floatView.offset += message.point_step - extraOffset;
+        bufferView.incrementOffset(message.point_step - bufferView.singlePointOffset);
       } else {
         // Converge all other points which should be invisible into the "last" point of the
         // "visible" cloud (effectively reset)
-        position[i3] = position[i3-3].x;
-        position[i3 + 1] = position[i3-2].y;
-        position[i3 + 2] = position[i3-1].z;
+        position[i3]     = position[i3 - 3].x;
+        position[i3 + 1] = position[i3 - 2].y;
+        position[i3 + 2] = position[i3 - 1].z;
       }
     }
     that.geometry.attributes.position.needsUpdate = true;
@@ -958,6 +965,61 @@ ROS3D.PointCloud.prototype.startStream = function() {
  */
 ROS3D.PointCloud.prototype.stopStream = function() {
     this.rosTopic.unsubscribe();
+};
+
+/**
+ * @author Peter Soetens - peter@pickit3d.com
+ * @author Viktor Kunovski - viktor@pickit3d.com
+ */
+
+ROS3D.BIG_ENDIAN = 0;
+ROS3D.LITTLE_ENDIAN = 1;
+
+ROS3D.BufferView = function(options) {
+  options = options || {};
+
+  this.endian = options.endian || ROS3D.BIG_ENDIAN;
+  this.type = options.type || 'base64';
+
+  var data = options.data || '';
+
+  this.view = new DataView(this.base64ToArrayBuffer(data));
+
+  this.offset = 0;
+  this.singlePointOffset = 0;
+};
+
+ROS3D.BufferView.prototype.readFloat32 = function() {
+  var value = this.view.getFloat32(this.offset, !!this.endian);
+  this.offset += 4;
+  this.singlePointOffset += 4;
+  return value;
+};
+
+ROS3D.BufferView.prototype.readUint8 = function() {
+  var value = this.view.getUint8(this.offset);
+  this.offset += 1;
+  this.singlePointOffset += 1;
+  return value;
+};
+
+ROS3D.BufferView.prototype.incrementOffset = function(offset) {
+  this.offset += +offset;
+  this.singlePointOffset += +offset;
+};
+
+ROS3D.BufferView.prototype.resetSinglePointOffset = function() {
+  this.singlePointOffset = 0;
+};
+
+ROS3D.BufferView.prototype.base64ToArrayBuffer = function(base64) {
+  var binaryString = window.atob(base64);
+  var len = binaryString.length;
+  var bytes = new Uint8Array(len);
+  for (var i = 0; i < len; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes.buffer;
 };
 
 /**
