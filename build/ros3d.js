@@ -2452,9 +2452,9 @@ ROS3D.Marker = function(options) {
         // this does need to be set again
         context.font = fontString;
         context.fillStyle = 'rgba('
-          + textColor.r + ', '
-          + textColor.g + ', '
-          + textColor.b + ', '
+          + Math.round(255 * textColor.r) + ', '
+          + Math.round(255 * textColor.g) + ', '
+          + Math.round(255 * textColor.b) + ', '
           + textColor.a + ')';
         context.textAlign = 'left';
         context.textBaseline = 'middle';
@@ -2950,6 +2950,85 @@ ROS3D.Arrow.prototype.setColor = function(hex) {
   this.material.color.setHex(hex);
 };
 
+/*
+ * Free memory of elements in this marker.
+ */
+ROS3D.Arrow.prototype.dispose = function() {
+  if (this.geometry !== undefined) {
+      this.geometry.dispose();
+  }
+  if (this.material !== undefined) {
+      this.material.dispose();
+  }
+};
+
+/**
+ * @author Jihoon Lee - lee@magazino.eu
+ */
+
+/**
+ * A Arrow is a THREE object that can be used to display an arrow model using ArrowHelper
+ *
+ * @constructor
+ * @param options - object with following keys:
+ *
+ *   * origin (optional) - the origin of the arrow
+ *   * direction (optional) - the direction vector of the arrow
+ *   * length (optional) - the length of the arrow
+ *   * headLength (optional) - the head length of the arrow
+ *   * shaftDiameter (optional) - the shaft diameter of the arrow
+ *   * headDiameter (optional) - the head diameter of the arrow
+ *   * material (optional) - the material to use for this arrow
+ */
+ROS3D.Arrow2 = function(options) {
+  options = options || {};
+  var origin = options.origin || new THREE.Vector3(0, 0, 0);
+  var direction = options.direction || new THREE.Vector3(1, 0, 0);
+  var length = options.length || 1;
+  var headLength = options.headLength || 0.2;
+  var shaftDiameter = options.shaftDiameter || 0.05;
+  var headDiameter = options.headDiameter || 0.1;
+  var material = options.material || new THREE.MeshBasicMaterial();
+
+  THREE.ArrowHelper.call(this, direction, origin, length, 0xff0000);
+
+};
+
+ROS3D.Arrow2.prototype.__proto__ = THREE.ArrowHelper.prototype;
+
+/*
+ * Free memory of elements in this object.
+ */
+ROS3D.Arrow2.prototype.dispose = function() {
+  if (this.line !== undefined) {
+      this.line.material.dispose();
+      this.line.geometry.dispose();
+  }
+  if (this.cone!== undefined) {
+      this.cone.material.dispose();
+      this.cone.geometry.dispose();
+  }
+};
+
+/*
+ROS3D.Arrow2.prototype.setLength = function ( length, headLength, headWidth ) {
+	if ( headLength === undefined ) {
+    headLength = 0.2 * length;
+  }
+	if ( headWidth === undefined ) {
+    headWidth = 0.2 * headLength;
+  }
+
+	this.line.scale.set( 1, Math.max( 0, length), 1 );
+	this.line.updateMatrix();
+
+	this.cone.scale.set( headWidth, headLength, headWidth );
+	this.cone.position.y = length;
+	this.cone.updateMatrix();
+
+};
+*/
+
 /**
  * @author David Gossow - dgossow@willowgarage.com
  */
@@ -3411,17 +3490,18 @@ ROS3D.OccupancyGridClient.prototype.processMessage = function(message){
 
   // check if we care about the scene
   if (this.tfClient) {
-    this.currentGrid = new ROS3D.SceneNode({
+    this.currentGrid = newGrid;
+    this.sceneNode = new ROS3D.SceneNode({
       frameID : message.header.frame_id,
       tfClient : this.tfClient,
       object : newGrid,
       pose : this.offsetPose
     });
   } else {
-    this.currentGrid = newGrid;
+    this.sceneNode = this.currentGrid = newGrid;
   }
 
-  this.rootObject.add(this.currentGrid);
+  this.rootObject.add(this.sceneNode);
 
   this.emit('change');
 
@@ -4365,8 +4445,7 @@ ROS3D.Urdf = function(options) {
             var mesh = new ROS3D.MeshResource({
               path : path,
               resource : uri,
-              loader : loader,
-              material : colorMaterial
+              loader : loader
             });
 
             // check for a scale
@@ -4716,6 +4795,7 @@ ROS3D.MouseHandler.prototype.processDomEvent = function(domEvent) {
   target = this.lastTarget;
   var intersections = [];
   intersections = mouseRaycaster.intersectObject(this.rootObject, true);
+
   if (intersections.length > 0) {
     target = intersections[0].object;
     event3D.intersection = this.lastIntersection = intersections[0];
@@ -4725,10 +4805,15 @@ ROS3D.MouseHandler.prototype.processDomEvent = function(domEvent) {
 
   // if the mouse moves from one object to another (or from/to the 'null' object), notify both
   if (target !== this.lastTarget && domEvent.type.match(/mouse/)) {
-    var eventAccepted = this.notify(target, 'mouseover', event3D);
-    if (eventAccepted) {
+
+    // Event Status. TODO: Make it as enum
+    // 0: Accepted
+    // 1: Failed
+    // 2: Continued
+    var eventStatus = this.notify(target, 'mouseover', event3D);
+    if (eventStatus === 0) {
       this.notify(this.lastTarget, 'mouseout', event3D);
-    } else {
+    } else if(eventStatus === 1) {
       // if target was null or no target has caught our event, fall back
       target = this.fallbackTarget;
       if (target !== this.lastTarget) {
@@ -4772,15 +4857,24 @@ ROS3D.MouseHandler.prototype.processDomEvent = function(domEvent) {
  */
 ROS3D.MouseHandler.prototype.notify = function(target, type, event3D) {
   // ensure the type is set
+  //
   event3D.type = type;
 
   // make the event cancelable
   event3D.cancelBubble = false;
+  event3D.continueBubble = false;
   event3D.stopPropagation = function() {
     event3D.cancelBubble = true;
   };
+
+  // it hit the selectable object but don't highlight
+  event3D.continuePropagation = function () {
+    event3D.continueBubble = true;
+  };
+
   // walk up graph until event is canceled or root node has been reached
   event3D.currentTarget = target;
+
   while (event3D.currentTarget) {
     // try to fire event on object
     if (event3D.currentTarget.dispatchEvent
@@ -4788,13 +4882,17 @@ ROS3D.MouseHandler.prototype.notify = function(target, type, event3D) {
       event3D.currentTarget.dispatchEvent(event3D);
       if (event3D.cancelBubble) {
         this.dispatchEvent(event3D);
-        return true;
+        return 0; // Event Accepted
+      }
+      else if(event3D.continueBubble) {
+        return 2; // Event Continued
       }
     }
     // walk up
     event3D.currentTarget = event3D.currentTarget.parent;
   }
-  return false;
+
+  return 1; // Event Failed
 };
 
 THREE.EventDispatcher.prototype.apply( ROS3D.MouseHandler.prototype );
