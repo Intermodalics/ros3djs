@@ -56804,6 +56804,10 @@ var OrbitControls = /*@__PURE__*/(function (superclass) {
 var Viewer = function Viewer(options) {
   options = options || {};
   var divID = options.divID;
+  var canvas = (!!options.canvas &&
+                options.canvas.nodeName.toLowerCase() === 'canvas')
+                  ? options.canvas
+                  : undefined;
   var width = options.width;
   var height = options.height;
   var background = options.background || '#111111';
@@ -56823,6 +56827,7 @@ var Viewer = function Viewer(options) {
 
   // create the canvas to render to
   this.renderer = new THREE$1.WebGLRenderer({
+    canvas: canvas,
     antialias : antialias,
     alpha: true
   });
@@ -56837,9 +56842,7 @@ var Viewer = function Viewer(options) {
 
   // create the global camera
   this.camera = new THREE$1.PerspectiveCamera(40, width / height, near, far);
-  this.camera.position.x = cameraPosition.x;
-  this.camera.position.y = cameraPosition.y;
-  this.camera.position.z = cameraPosition.z;
+  this.camera.position.set( cameraPosition.x, cameraPosition.y, cameraPosition.z );
   // add controls to the camera
   this.cameraControls = new OrbitControls({
     scene : this.scene,
@@ -56873,7 +56876,11 @@ var Viewer = function Viewer(options) {
   this.animationRequestId = undefined;
 
   // add the renderer to the page
-  document.getElementById(divID).appendChild(this.renderer.domElement);
+  if (divID && !canvas) {
+    document.getElementById(divID).appendChild(this.renderer.domElement);
+  } else if (!canvas) {
+    throw new Error('No canvas nor HTML container provided for rendering.');
+  }
 
   // begin the render loop
   this.start();
