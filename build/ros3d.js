@@ -54659,6 +54659,17 @@ class MarkerArrayClient extends eventemitter2 {
       this.rosTopic.unsubscribe();
     }
   };
+
+  removeArray() {
+    this.rosTopic.unsubscribe();
+    for (var key in this.markers) {
+      if (this.markers.hasOwnProperty(key)) {
+        this.markers[key].unsubscribeTf();
+        this.rootObject.remove( this.markers[key] );
+      }
+    }
+    this.markers = {};
+  };
 }
 
 /**

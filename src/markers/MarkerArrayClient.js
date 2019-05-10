@@ -108,4 +108,15 @@ ROS3D.MarkerArrayClient.prototype.removeMarker = function(key) {
     child.dispose();
   });
   delete(this.markers[key]);
-};
+}
+
+ROS3D.MarkerArrayClient.prototype.removeArray = function() {
+  this.rosTopic.unsubscribe();
+  for (var key in this.markers) {
+    if (this.markers.hasOwnProperty(key)) {
+      this.markers[key].unsubscribeTf();
+      this.rootObject.remove( this.markers[key] );
+    }
+  }
+  this.markers = {};
+}
