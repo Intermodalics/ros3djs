@@ -64,7 +64,7 @@ ROS3D.MarkerArrayClient.prototype.processMessage = function(arrayMessage){
           path : this.path,
         });
         this.markers[message.ns + message.id] = new ROS3D.SceneNode({
-          frameID : message.header.frame_id,
+          frameID : message.header.frame_id.replace(/^\//, ''),
           tfClient : this.tfClient,
           object : newMarker
         });
