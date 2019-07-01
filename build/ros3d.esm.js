@@ -556,7 +556,12 @@ class Arrow extends THREE$1.Mesh {
    * @param direction - the direction to set this arrow
    */
   setDirection(direction) {
-    var axis = new THREE$1.Vector3(0, 1, 0).cross(direction);
+    var axis = new THREE$1.Vector3();
+    if(direction.x === 0 && direction.z === 0){
+      axis.set(1, 0, 0);
+    } else {
+      axis.set(0, 1, 0).cross(direction);
+    }
     var radians = Math.acos(new THREE$1.Vector3(0, 1, 0).dot(direction.clone().normalize()));
     this.matrix = new THREE$1.Matrix4().makeRotationAxis(axis.normalize(), radians);
     this.rotation.setFromRotationMatrix(this.matrix, this.rotation.order);
@@ -677,7 +682,7 @@ THREE$1.STLLoader.prototype = {
         // If solid[ i ] does not match the i-th byte, then it is not an
         // ASCII STL; hence, it is binary and return true.
 
-        if (solid[i] != reader.getUint8(i, false)) { return true; }
+        if (solid[i] != reader.getUint8(i, false)) return true;
 
       }
 
@@ -1357,12 +1362,12 @@ THREE$1.OBJLoader.prototype = {
 
 			lineLength = line.length;
 
-			if ( lineLength === 0 ) { continue; }
+			if ( lineLength === 0 ) continue;
 
 			lineFirstChar = line.charAt( 0 );
 
 			// @todo invoke passed in handler if any
-			if ( lineFirstChar === '#' ) { continue; }
+			if ( lineFirstChar === '#' ) continue;
 
 			if ( lineFirstChar === 'v' ) {
 
@@ -1456,8 +1461,8 @@ THREE$1.OBJLoader.prototype = {
 
 						var parts = lineParts[ li ].split( "/" );
 
-						if ( parts[ 0 ] !== "" ) { lineVertices.push( parts[ 0 ] ); }
-						if ( parts[ 1 ] !== "" ) { lineUVs.push( parts[ 1 ] ); }
+						if ( parts[ 0 ] !== "" ) lineVertices.push( parts[ 0 ] );
+						if ( parts[ 1 ] !== "" ) lineUVs.push( parts[ 1 ] );
 
 					}
 
@@ -1531,12 +1536,12 @@ THREE$1.OBJLoader.prototype = {
 
 				}
 				var material = state.object.currentMaterial();
-				if ( material ) { material.smooth = state.object.smooth; }
+				if ( material ) material.smooth = state.object.smooth;
 
 			} else {
 
 				// Handle null terminated files without exception
-				if ( line === '\0' ) { continue; }
+				if ( line === '\0' ) continue;
 
 				throw new Error( 'THREE.OBJLoader: Unexpected line: "' + line + '"' );
 
@@ -1546,7 +1551,7 @@ THREE$1.OBJLoader.prototype = {
 
 		state.finalize();
 
-		var container = new THREE$1.Group();
+		var container = new THREE$1.Object3D();
 		container.materialLibraries = [].concat( state.materialLibraries );
 
 		for ( var i = 0, l = state.objects.length; i < l; i ++ ) {
@@ -1559,7 +1564,7 @@ THREE$1.OBJLoader.prototype = {
 			var hasVertexColors = false;
 
 			// Skip o/g line declarations that did not follow with any faces
-			if ( geometry.vertices.length === 0 ) { continue; }
+			if ( geometry.vertices.length === 0 ) continue;
 
 			var buffergeometry = new THREE$1.BufferGeometry();
 
@@ -1946,7 +1951,7 @@ THREE$1.MTLLoader.MaterialCreator.prototype = {
 
 	convert: function ( materialsInfo ) {
 
-		if ( ! this.options ) { return materialsInfo; }
+		if ( ! this.options ) return materialsInfo;
 
 		var converted = {};
 
@@ -1958,7 +1963,7 @@ THREE$1.MTLLoader.MaterialCreator.prototype = {
 
 			var covmat = {};
 
-        if (solid[i] != reader.getUint8(i, false)) return true;
+			converted[ mn ] = covmat;
 
 			for ( var prop in mat ) {
 
@@ -2074,10 +2079,10 @@ THREE$1.MTLLoader.MaterialCreator.prototype = {
 		function resolveURL( baseUrl, url ) {
 
 			if ( typeof url !== 'string' || url === '' )
-				{ return ''; }
+				return '';
 
 			// Absolute URL
-			if ( /^https?:\/\//i.test( url ) ) { return url; }
+			if ( /^https?:\/\//i.test( url ) ) return url;
 
 			return baseUrl + url;
 
@@ -2085,7 +2090,7 @@ THREE$1.MTLLoader.MaterialCreator.prototype = {
 
 		function setMapForType( mapType, value ) {
 
-			if ( params[ mapType ] ) { return; } // Keep the first encountered texture
+			if ( params[ mapType ] ) return; // Keep the first encountered texture
 
 			var texParams = scope.getTextureParams( value, params );
 			var map = scope.loadTexture( resolveURL( scope.baseUrl, texParams.url ) );
@@ -2105,7 +2110,7 @@ THREE$1.MTLLoader.MaterialCreator.prototype = {
 			var value = mat[ prop ];
 			var n;
 
-			if ( value === '' ) { continue; }
+			if ( value === '' ) continue;
 
 			switch ( prop.toLowerCase() ) {
 
@@ -2205,7 +2210,7 @@ THREE$1.MTLLoader.MaterialCreator.prototype = {
 				case 'tr':
 					n = parseFloat( value );
 
-					if ( this.options && this.options.invertTrProperty ) { n = 1 - n; }
+					if ( this.options && this.options.invertTrProperty ) n = 1 - n;
 
 					if ( n > 0 ) {
 
@@ -2284,10 +2289,10 @@ THREE$1.MTLLoader.MaterialCreator.prototype = {
 
 		}
 
-		if ( loader.setCrossOrigin ) { loader.setCrossOrigin( this.crossOrigin ); }
+		if ( loader.setCrossOrigin ) loader.setCrossOrigin( this.crossOrigin );
 		texture = loader.load( url, onLoad, onProgress, onError );
 
-		if ( mapping !== undefined ) { texture.mapping = mapping; }
+		if ( mapping !== undefined ) texture.mapping = mapping;
 
 		return texture;
 
@@ -5419,7 +5424,7 @@ THREE$1.ColladaLoader.prototype = {
 
       } else {
 
-        object = (type === 'JOINT') ? new THREE$1.Bone() : new THREE$1.Group();
+        object = (type === 'JOINT') ? new THREE$1.Bone() : new THREE$1.Object3D();
 
         for (var i = 0; i < objects.length; i++) {
 
@@ -5564,7 +5569,7 @@ THREE$1.ColladaLoader.prototype = {
 
     function buildVisualScene(data) {
 
-      var group = new THREE$1.Group();
+      var group = new THREE$1.Object3D();
       group.name = data.name;
 
       var children = data.children;
@@ -5782,8 +5787,8 @@ var MeshLoader = {
    },
    loaders: {
      'dae': function(meshRes, uri, options) {
-       var material = options.material;
-       var loader = new THREE$1.ColladaLoader();
+       const material = options.material;
+       const loader = new THREE$1.ColladaLoader(options.loader);
        loader.log = function(message) {
          if (meshRes.warnings) {
            console.warn(message);
@@ -5812,8 +5817,8 @@ var MeshLoader = {
      },
 
      'obj': function(meshRes, uri, options) {
-       var material = options.material;
-       var loader = new THREE$1.OBJLoader();
+       const material = options.material;
+       const loader = new THREE$1.OBJLoader(options.loader);
        loader.log = function(message) {
          if (meshRes.warnings) {
            console.warn(message);
@@ -5840,12 +5845,12 @@ var MeshLoader = {
          uri,
          function OBJFileReady(obj) {
 
-           var baseUri = THREE$1.LoaderUtils.extractUrlBase( uri );
+           const baseUri = THREE$1.LoaderUtils.extractUrlBase( uri );
 
            if (obj.materialLibraries.length) {
              // load the material libraries
-             var materialUri = obj.materialLibraries[0];
-             new THREE$1.MTLLoader().setPath(baseUri).load(
+             const materialUri = obj.materialLibraries[0];
+             new THREE$1.MTLLoader(options.loader).setPath(baseUri).load(
                materialUri,
                function(materials) {
                   materials.preload();
@@ -5867,8 +5872,8 @@ var MeshLoader = {
      },
 
      'stl': function(meshRes, uri, options) {
-       var material = options.material;
-       var loader = new THREE$1.STLLoader();
+       const material = options.material;
+       const loader = new THREE$1.STLLoader(options.loader);
        {
          loader.load(uri,
                      function ( geometry ) {
@@ -5912,7 +5917,6 @@ class MeshResource extends THREE$1.Object3D {
    */
   constructor(options) {
     super();
-    var that = this;
     options = options || {};
     var path = options.path || '/';
     var resource = options.resource;
@@ -7873,8 +7877,7 @@ class MarkerArrayClient extends EventEmitter2 {
         if(message.ns + message.id in this.markers) { // "MODIFY"
           updated = this.markers[message.ns + message.id].children[0].update(message);
           if(!updated) { // "REMOVE"
-            this.markers[message.ns + message.id].unsubscribeTf();
-            this.rootObject.remove(this.markers[message.ns + message.id]);
+            this.removeMarker(message.ns + message.id);
           }
         }
         if(!updated) { // "ADD"
@@ -7894,14 +7897,11 @@ class MarkerArrayClient extends EventEmitter2 {
         console.warn('Received marker message with deprecated action identifier "1"');
       }
       else if(message.action === 2) { // "DELETE"
-        this.markers[message.ns + message.id].unsubscribeTf();
-        this.rootObject.remove(this.markers[message.ns + message.id]);
-        delete this.markers[message.ns + message.id];
+        this.removeMarker(message.ns + message.id);
       }
       else if(message.action === 3) { // "DELETE ALL"
         for (var m in this.markers){
-          this.markers[m].unsubscribeTf();
-          this.rootObject.remove(this.markers[m]);
+          this.removeMarker(m);
         }
         this.markers = {};
       }
@@ -7919,15 +7919,17 @@ class MarkerArrayClient extends EventEmitter2 {
     }
   };
 
-  removeArray() {
-    this.rosTopic.unsubscribe();
-    for (var key in this.markers) {
-      if (this.markers.hasOwnProperty(key)) {
-        this.markers[key].unsubscribeTf();
-        this.rootObject.remove( this.markers[key] );
-      }
+  removeMarker(key) {
+    var oldNode = this.markers[key];
+    if(!oldNode) {
+      return;
     }
-    this.markers = {};
+    oldNode.unsubscribeTf();
+    this.rootObject.remove(oldNode);
+    oldNode.children.forEach(child => {
+      child.dispose();
+    });
+    delete(this.markers[key]);
   };
 }
 
@@ -7981,9 +7983,7 @@ class MarkerClient extends EventEmitter2 {
   checkTime(name){
       var curTime = new Date().getTime();
       if (curTime - this.updatedTime[name] > this.lifetime) {
-          var oldNode = this.markers[name];
-          oldNode.unsubscribeTf();
-          this.rootObject.remove(oldNode);
+          this.removeMarker(name);
           this.emit('change');
       } else {
           var that = this;
@@ -8006,17 +8006,12 @@ class MarkerClient extends EventEmitter2 {
   };
 
   processMessage(message){
-    var newMarker = new Marker({
-      message : message,
-      path : this.path,
-    });
-
     // remove old marker from Three.Object3D children buffer
     var oldNode = this.markers[message.ns + message.id];
     this.updatedTime[message.ns + message.id] = new Date().getTime();
     if (oldNode) {
-      oldNode.unsubscribeTf();
-      this.rootObject.remove(oldNode);
+      this.removeMarker(message.ns + message.id);
+
     } else if (this.lifetime) {
       this.checkTime(message.ns + message.id);
     }
@@ -8036,6 +8031,19 @@ class MarkerClient extends EventEmitter2 {
     }
 
     this.emit('change');
+  };
+
+  removeMarker(key) {
+    var oldNode = this.markers[key];
+    if(!oldNode) {
+      return;
+    }
+    oldNode.unsubscribeTf();
+    this.rootObject.remove(oldNode);
+    oldNode.children.forEach(child => {
+      child.dispose();
+    });
+    delete(this.markers[key]);
   };
 }
 
@@ -8277,47 +8285,23 @@ class OccupancyGrid extends THREE$1.Mesh {
    */
   constructor(options) {
     options = options || {};
-    var message = options.message;
-    var color = options.color || {r:255,g:255,b:255};
+    var message = options.message;  
     var opacity = options.opacity || 1.0;
+    var color = options.color || {r:255,g:255,b:255,a:255};
 
     // create the geometry
-    var width = message.info.width;
-    var height = message.info.height;
+    var info = message.info;
+    var origin = info.origin;
+    var width = info.width;
+    var height = info.height;
     var geom = new THREE$1.PlaneBufferGeometry(width, height);
 
     // create the color material
-    var imageData = new Uint8Array(width * height * 3);
-    for ( var row = 0; row < height; row++) {
-      for ( var col = 0; col < width; col++) {
-        // determine the index into the map data
-        var mapI = col + ((height - row - 1) * width);
-        // determine the value
-        var data = message.data[mapI];
-        var val;
-        if (data === 100) {
-          val = 0;
-        } else if (data === 0) {
-          val = 255;
-        } else {
-          val = 127;
-        }
-
-        // determine the index into the image data array
-        var i = (col + (row * width)) * 3;
-        // r
-        imageData[i] = (val * color.r) / 255;
-        // g
-        imageData[++i] = (val * color.g) / 255;
-        // b
-        imageData[++i] = (val * color.b) / 255;
-      }
-    }
-
-    var texture = new THREE$1.DataTexture(imageData, width, height, THREE$1.RGBFormat);
+    var imageData = new Uint8Array(width * height * 4);
+    var texture = new THREE$1.DataTexture(imageData, width, height, THREE$1.RGBAFormat);
     texture.flipY = true;
-    texture.minFilter = THREE$1.LinearFilter;
-    texture.magFilter = THREE$1.LinearFilter;
+    texture.minFilter = THREE$1.NearestFilter;
+    texture.magFilter = THREE$1.NearestFilter;
     texture.needsUpdate = true;
 
     var material = new THREE$1.MeshBasicMaterial({
@@ -8330,17 +8314,85 @@ class OccupancyGrid extends THREE$1.Mesh {
     // create the mesh
     super(geom, material);
     // move the map so the corner is at X, Y and correct orientation (informations from message.info)
+
+    // assign options to this for subclasses
+    Object.assign(this, options);
+
     this.quaternion.copy(new THREE$1.Quaternion(
-        message.info.origin.orientation.x,
-        message.info.origin.orientation.y,
-        message.info.origin.orientation.z,
-        message.info.origin.orientation.w
+        origin.orientation.x,
+        origin.orientation.y,
+        origin.orientation.z,
+        origin.orientation.w
     ));
-    this.position.x = (width * message.info.resolution) / 2 + message.info.origin.position.x;
-    this.position.y = (height * message.info.resolution) / 2 + message.info.origin.position.y;
-    this.position.z = message.info.origin.position.z;
-    this.scale.x = message.info.resolution;
-    this.scale.y = message.info.resolution;
+    this.position.x = (width * info.resolution) / 2 + origin.position.x;
+    this.position.y = (height * info.resolution) / 2 + origin.position.y;
+    this.position.z = origin.position.z;
+    this.scale.x = info.resolution;
+    this.scale.y = info.resolution;
+      
+    var data = message.data;
+    // update the texture (after the the super call and this are accessible)
+    this.color = color;
+    this.material = material;
+    this.texture = texture;
+
+    for ( var row = 0; row < height; row++) {
+      for ( var col = 0; col < width; col++) {
+        
+        // determine the index into the map data
+        var invRow = (height - row - 1);
+        var mapI = col + (invRow * width);
+        // determine the value      
+        var val = this.getValue(mapI, invRow, col, data);
+              
+        // determine the color
+        var color = this.getColor(mapI, invRow, col, val);
+
+        // determine the index into the image data array
+        var i = (col + (row * width)) * 4;
+
+        // copy the color
+        imageData.set(color, i);
+      }
+    }
+
+    texture.needsUpdate = true;
+
+  };
+
+  dispose() {
+    this.material.dispose();
+    this.texture.dispose();
+  };
+
+  /**
+   * Returns the value for a given grid cell
+   * @param {int} index the current index of the cell
+   * @param {int} row the row of the cell
+   * @param {int} col the column of the cell
+   * @param {object} data the data buffer
+   */
+  getValue(index, row, col, data) {
+    return data[index];
+  };
+
+  /**
+   * Returns a color value given parameters of the position in the grid; the default implementation
+   * scales the default color value by the grid value. Subclasses can extend this functionality
+   * (e.g. lookup a color in a color map).
+   * @param {int} index the current index of the cell
+   * @param {int} row the row of the cell
+   * @param {int} col the column of the cell
+   * @param {float} value the value of the cell
+   * @returns r,g,b,a array of values from 0 to 255 representing the color values for each channel
+   */
+  getColor(index, row, col, value) {
+    return [
+      (value * this.color.r) / 255,
+      (value * this.color.g) / 255,
+      (value * this.color.b) / 255,
+      255
+    ];
   };
 }
 
@@ -8408,6 +8460,7 @@ class OccupancyGridClient extends EventEmitter2 {
       queue_length : 1,
       compression : this.compression
     });
+    this.sceneNode = null;
     this.rosTopic.subscribe(this.processMessage.bind(this));
   };
 
@@ -8419,7 +8472,8 @@ class OccupancyGridClient extends EventEmitter2 {
         // grid is of type ROS3D.SceneNode
         this.currentGrid.unsubscribeTf();
       }
-      this.rootObject.remove(this.currentGrid);
+      this.sceneNode.remove(this.currentGrid);
+      this.currentGrid.dispose();
     }
 
     var newGrid = new OccupancyGrid({
@@ -8431,17 +8485,21 @@ class OccupancyGridClient extends EventEmitter2 {
     // check if we care about the scene
     if (this.tfClient) {
       this.currentGrid = newGrid;
-      this.sceneNode = new SceneNode({
-        frameID : message.header.frame_id,
-        tfClient : this.tfClient,
-        object : newGrid,
-        pose : this.offsetPose
-      });
+      if (this.sceneNode === null) {
+        this.sceneNode = new SceneNode({
+          frameID : message.header.frame_id,
+          tfClient : this.tfClient,
+          object : newGrid,
+          pose : this.offsetPose
+        });
+        this.rootObject.add(this.sceneNode);
+      } else {
+        this.sceneNode.add(this.currentGrid);
+      }
     } else {
       this.sceneNode = this.currentGrid = newGrid;
+      this.rootObject.add(this.currentGrid);
     }
-
-    this.rootObject.add(this.sceneNode);
 
     this.emit('change');
 
@@ -9094,7 +9152,7 @@ class Points extends THREE$1.Object3D {
 
   setup(frame, point_step, fields)
   {
-      if(this.sn===null){
+      if(this.sn===null && !this.destroyed){
           // turn fields to a map
           fields = fields || [];
           this.fields = {};
@@ -9162,6 +9220,16 @@ class Points extends THREE$1.Object3D {
       this.colors.needsUpdate = true;
       this.colors.updateRange.count = n * this.colors.itemSize;
     }
+  };
+
+  dispose(n)
+  {
+    this.destroyed = true;
+    if (this.positions) {this.positions.array = null;}
+    this.positions = null;
+    if (this.colors) {this.colors.array = null;}
+    this.colors = null;
+    this.rootObject.remove(this.sn);
   };
 }
 
@@ -9305,6 +9373,7 @@ class PointCloud2 extends THREE$1.Object3D {
     options = options || {};
     this.ros = options.ros;
     this.topicName = options.topic || '/points';
+    this.throttle_rate = options.throttle_rate || null;
     this.compression = options.compression || 'cbor';
     this.max_pts = options.max_pts || 10000;
     this.points = new Points(options);
@@ -9328,6 +9397,7 @@ class PointCloud2 extends THREE$1.Object3D {
       ros : this.ros,
       name : this.topicName,
       messageType : 'sensor_msgs/PointCloud2',
+      throttle_rate : this.throttle_rate,
       queue_length : 1,
       compression: this.compression
     });
@@ -9502,34 +9572,13 @@ class Urdf extends THREE$1.Object3D {
                   tfClient : tfClient,
                   object : mesh
               });
-              this.add(sceneNode);
+              sceneNode.name = visual.name;
+              this.add(sceneNode);            
             } else {
               console.warn('Could not load geometry mesh: '+uri);
             }
           } else {
-            if (!colorMaterial) {
-              colorMaterial = makeColorMaterial(0, 0, 0, 1);
-            }
-            var shapeMesh;
-            // Create a shape
-            switch (visual.geometry.type) {
-              case URDF_BOX:
-                var dimension = visual.geometry.dimension;
-                var cube = new THREE$1.BoxGeometry(dimension.x, dimension.y, dimension.z);
-                shapeMesh = new THREE$1.Mesh(cube, colorMaterial);
-                break;
-              case URDF_CYLINDER:
-                var radius = visual.geometry.radius;
-                var length = visual.geometry.length;
-                var cylinder = new THREE$1.CylinderGeometry(radius, radius, length, 16, 1, false);
-                shapeMesh = new THREE$1.Mesh(cylinder, colorMaterial);
-                shapeMesh.quaternion.setFromAxisAngle(new THREE$1.Vector3(1, 0, 0), Math.PI * 0.5);
-                break;
-              case URDF_SPHERE:
-                var sphere = new THREE$1.SphereGeometry(visual.geometry.radius, 16);
-                shapeMesh = new THREE$1.Mesh(sphere, colorMaterial);
-                break;
-            }
+            var shapeMesh = this.createShapeMesh(visual, options);
             // Create a scene node with the shape
             var scene = new SceneNode({
               frameID: frameID,
@@ -9537,12 +9586,43 @@ class Urdf extends THREE$1.Object3D {
                 tfClient: tfClient,
                 object: shapeMesh
             });
+            scene.name = visual.name;
             this.add(scene);
           }
         }
       }
     }
   };
+
+  createShapeMesh(visual, options) {
+    var colorMaterial = null;
+    if (!colorMaterial) {
+      colorMaterial = makeColorMaterial(0, 0, 0, 1);
+    }
+    var shapeMesh;
+    // Create a shape
+    switch (visual.geometry.type) {
+      case URDF_BOX:
+        var dimension = visual.geometry.dimension;
+        var cube = new THREE$1.BoxGeometry(dimension.x, dimension.y, dimension.z);
+        shapeMesh = new THREE$1.Mesh(cube, colorMaterial);
+        break;
+      case URDF_CYLINDER:
+        var radius = visual.geometry.radius;
+        var length = visual.geometry.length;
+        var cylinder = new THREE$1.CylinderGeometry(radius, radius, length, 16, 1, false);
+        shapeMesh = new THREE$1.Mesh(cylinder, colorMaterial);
+        shapeMesh.quaternion.setFromAxisAngle(new THREE$1.Vector3(1, 0, 0), Math.PI * 0.5);
+        break;
+      case URDF_SPHERE:
+        var sphere = new THREE$1.SphereGeometry(visual.geometry.radius, 16);
+        shapeMesh = new THREE$1.Mesh(sphere, colorMaterial);
+        break;
+    }
+
+    return shapeMesh;
+  };
+
 
   unsubscribeTf () {
     this.children.forEach(function(n) {
@@ -9825,17 +9905,16 @@ class MouseHandler extends THREE$1.EventDispatcher {
     var top = pos_y - rect.top - target.clientTop + target.scrollTop;
     var deviceX = left / target.clientWidth * 2 - 1;
     var deviceY = -top / target.clientHeight * 2 + 1;
-    var vector = new THREE$1.Vector3(deviceX, deviceY, 0.5);
-    vector.unproject(this.camera);
-    // use the THREE raycaster
-    var mouseRaycaster = new THREE$1.Raycaster(this.camera.position.clone(), vector.sub(
-        this.camera.position).normalize());
+    var mousePos = new THREE$1.Vector2(deviceX, deviceY);
+
+    var mouseRaycaster = new THREE$1.Raycaster();
     mouseRaycaster.linePrecision = 0.001;
+    mouseRaycaster.setFromCamera(mousePos, this.camera);
     var mouseRay = mouseRaycaster.ray;
 
     // make our 3d mouse event
     var event3D = {
-      mousePos : new THREE$1.Vector2(deviceX, deviceY),
+      mousePos : mousePos,
       mouseRay : mouseRay,
       domEvent : domEvent,
       camera : this.camera,
@@ -10511,6 +10590,7 @@ class Viewer {
    * @constructor
    * @param options - object with following keys:
    *
+   *  * elem - the elem to place the viewer in (overrides divID if provided)
    *  * divID - the ID of the div to place the viewer in [optional (if canvas omitted)].
    *  * canvas - the canvas which will be used for rendering [optional (if divID omitted)].
    *  * width - the initial width, in pixels, of the canvas
@@ -10530,6 +10610,7 @@ class Viewer {
   constructor(options) {
     options = options || {};
     var divID = options.divID;
+    var elem = options.elem;
     var canvas = (!!options.canvas &&
                   options.canvas.nodeName.toLowerCase() === 'canvas')
                     ? options.canvas
@@ -10584,7 +10665,7 @@ class Viewer {
     this.scene.add(this.directionalLight);
 
     // propagates mouse events to three.js objects
-    this.selectableObjects = new THREE$1.Object3D();
+    this.selectableObjects = new THREE$1.Group();
     this.scene.add(this.selectableObjects);
     var mouseHandler = new MouseHandler({
       renderer : this.renderer,
@@ -10603,7 +10684,8 @@ class Viewer {
 
     // add the renderer to the page
     if (divID && !canvas) {
-      document.getElementById(divID).appendChild(this.renderer.domElement);
+      var node = elem || document.getElementById(divID);  
+      node.appendChild(this.renderer.domElement);
     } else if (!canvas) {
       throw new Error('No canvas nor HTML container provided for rendering.');
     }
@@ -10685,4 +10767,4 @@ class Viewer {
   };
 }
 
-export { MARKER_ARROW, MARKER_CUBE, MARKER_SPHERE, MARKER_CYLINDER, MARKER_LINE_STRIP, MARKER_LINE_LIST, MARKER_CUBE_LIST, MARKER_SPHERE_LIST, MARKER_POINTS, MARKER_TEXT_VIEW_FACING, MARKER_MESH_RESOURCE, MARKER_TRIANGLE_LIST, INTERACTIVE_MARKER_KEEP_ALIVE, INTERACTIVE_MARKER_POSE_UPDATE, INTERACTIVE_MARKER_MENU_SELECT, INTERACTIVE_MARKER_BUTTON_CLICK, INTERACTIVE_MARKER_MOUSE_DOWN, INTERACTIVE_MARKER_MOUSE_UP, INTERACTIVE_MARKER_NONE, INTERACTIVE_MARKER_MENU, INTERACTIVE_MARKER_BUTTON, INTERACTIVE_MARKER_MOVE_AXIS, INTERACTIVE_MARKER_MOVE_PLANE, INTERACTIVE_MARKER_ROTATE_AXIS, INTERACTIVE_MARKER_MOVE_ROTATE, INTERACTIVE_MARKER_MOVE_3D, INTERACTIVE_MARKER_ROTATE_3D, INTERACTIVE_MARKER_MOVE_ROTATE_3D, INTERACTIVE_MARKER_INHERIT, INTERACTIVE_MARKER_FIXED, INTERACTIVE_MARKER_VIEW_FACING, makeColorMaterial, intersectPlane, findClosestPoint, closestAxisPoint, DepthCloud, InteractiveMarker, InteractiveMarkerClient, InteractiveMarkerControl, InteractiveMarkerHandle, InteractiveMarkerMenu, Marker, MarkerArrayClient, MarkerClient, Arrow, Arrow2, Axes, Grid, MeshResource, TriangleList, OccupancyGrid, OccupancyGridClient, Odometry, Path, Point, Polygon, Pose$1 as Pose, PoseArray, PoseWithCovariance, LaserScan, Points, PointCloud2, TFAxes, Urdf, UrdfClient, Highlighter, MouseHandler, OrbitControls, SceneNode, Viewer };
+export { MARKER_ARROW, MARKER_CUBE, MARKER_SPHERE, MARKER_CYLINDER, MARKER_LINE_STRIP, MARKER_LINE_LIST, MARKER_CUBE_LIST, MARKER_SPHERE_LIST, MARKER_POINTS, MARKER_TEXT_VIEW_FACING, MARKER_MESH_RESOURCE, MARKER_TRIANGLE_LIST, INTERACTIVE_MARKER_KEEP_ALIVE, INTERACTIVE_MARKER_POSE_UPDATE, INTERACTIVE_MARKER_MENU_SELECT, INTERACTIVE_MARKER_BUTTON_CLICK, INTERACTIVE_MARKER_MOUSE_DOWN, INTERACTIVE_MARKER_MOUSE_UP, INTERACTIVE_MARKER_NONE, INTERACTIVE_MARKER_MENU, INTERACTIVE_MARKER_BUTTON, INTERACTIVE_MARKER_MOVE_AXIS, INTERACTIVE_MARKER_MOVE_PLANE, INTERACTIVE_MARKER_ROTATE_AXIS, INTERACTIVE_MARKER_MOVE_ROTATE, INTERACTIVE_MARKER_MOVE_3D, INTERACTIVE_MARKER_ROTATE_3D, INTERACTIVE_MARKER_MOVE_ROTATE_3D, INTERACTIVE_MARKER_INHERIT, INTERACTIVE_MARKER_FIXED, INTERACTIVE_MARKER_VIEW_FACING, makeColorMaterial, intersectPlane, findClosestPoint, closestAxisPoint, DepthCloud, InteractiveMarker, InteractiveMarkerClient, InteractiveMarkerControl, InteractiveMarkerHandle, InteractiveMarkerMenu, Marker, MarkerArrayClient, MarkerClient, Arrow, Arrow2, Axes, Grid, MeshLoader, MeshResource, TriangleList, OccupancyGrid, OccupancyGridClient, Odometry, Path, Point, Polygon, Pose$1 as Pose, PoseArray, PoseWithCovariance, LaserScan, Points, PointCloud2, TFAxes, Urdf, UrdfClient, Highlighter, MouseHandler, OrbitControls, SceneNode, Viewer };
