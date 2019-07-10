@@ -8082,6 +8082,7 @@ var MarkerArrayClient = /*@__PURE__*/(function (EventEmitter2$$1) {
           updated = this.markers[message.ns + message.id].children[0].update(message);
           if(!updated) { // "REMOVE"
             this.markers[message.ns + message.id].unsubscribeTf();
+            this.markers[message.ns + message.id].children[0].dispose();
             this.rootObject.remove(this.markers[message.ns + message.id]);
           }
         }
@@ -8104,6 +8105,7 @@ var MarkerArrayClient = /*@__PURE__*/(function (EventEmitter2$$1) {
       else if(message.action === 2) { // "DELETE"
         if (message.ns + message.id in this.markers) {
           this.markers[message.ns + message.id].unsubscribeTf();
+          this.markers[message.ns + message.id].children[0].dispose();
           this.rootObject.remove(this.markers[message.ns + message.id]);
           delete this.markers[message.ns + message.id];
         }
@@ -8111,6 +8113,7 @@ var MarkerArrayClient = /*@__PURE__*/(function (EventEmitter2$$1) {
       else if(message.action === 3) { // "DELETE ALL"
         for (var m in this.markers){
           this.markers[m].unsubscribeTf();
+          this.markers[m].children[0].dispose();
           this.rootObject.remove(this.markers[m]);
         }
         this.markers = {};
@@ -8132,6 +8135,7 @@ var MarkerArrayClient = /*@__PURE__*/(function (EventEmitter2$$1) {
     for (var key in this.markers) {
       if (this.markers.hasOwnProperty(key)) {
         this.markers[key].unsubscribeTf();
+        this.markers[key].children[0].dispose();
         this.rootObject.remove( this.markers[key] );
       }
     }

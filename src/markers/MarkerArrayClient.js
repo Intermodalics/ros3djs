@@ -115,6 +115,7 @@ ROS3D.MarkerArrayClient.prototype.removeArray = function() {
   for (var key in this.markers) {
     if (this.markers.hasOwnProperty(key)) {
       this.markers[key].unsubscribeTf();
+      this.markers[key].children[0].dispose();
       this.rootObject.remove( this.markers[key] );
     }
   }
