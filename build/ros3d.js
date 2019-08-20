@@ -6412,6 +6412,7 @@ class Marker extends THREE$1.Object3D {
     options = options || {};
     var path = options.path || '/';
     var message = options.message;
+    var eps = 0.000001;
 
     // check for a trailing '/'
     if (path.substr(path.length - 1) !== '/') {
@@ -6469,8 +6470,8 @@ class Marker extends THREE$1.Object3D {
         }));
         break;
       case MARKER_CUBE:
-        // set the cube dimensions
-        var cubeGeom = new THREE$1.BoxGeometry(message.scale.x, message.scale.y, message.scale.z);
+        // set the cube dimensions, use epsilon value for 0, otherwise the current version of threejs uses 1, which is worse
+        var cubeGeom = new THREE$1.BoxGeometry(message.scale.x || eps, message.scale.y || eps, message.scale.z || eps);
         this.add(new THREE$1.Mesh(cubeGeom, colorMaterial));
         break;
       case MARKER_SPHERE:
@@ -6550,7 +6551,6 @@ class Marker extends THREE$1.Object3D {
         }
 
         // add the line
-        console.log('adding line!');
         this.add(new THREE$1.Line(lineListGeom, lineListMaterial,THREE$1.LineSegments));
         break;
       case MARKER_CUBE_LIST:
@@ -8360,9 +8360,7 @@ class MarkerClient extends EventEmitter2 {
   checkTime(name){
       var curTime = new Date().getTime();
       if (curTime - this.updatedTime[name] > this.lifetime) {
-          var oldNode = this.markers[name];
-          oldNode.unsubscribeTf();
-          this.rootObject.remove(oldNode);
+          this.removeMarker(name);
           this.emit('change');
       } else {
           var that = this;
@@ -8389,8 +8387,8 @@ class MarkerClient extends EventEmitter2 {
     var oldNode = this.markers[message.ns + message.id];
     this.updatedTime[message.ns + message.id] = new Date().getTime();
     if (oldNode) {
-      oldNode.unsubscribeTf();
-      this.rootObject.remove(oldNode);
+      this.removeMarker(message.ns + message.id);
+
     } else if (this.lifetime) {
       this.checkTime(message.ns + message.id);
     }
@@ -8410,6 +8408,16 @@ class MarkerClient extends EventEmitter2 {
     }
 
     this.emit('change');
+  };
+
+  removeMarker(key) {
+    var oldNode = this.markers[key];
+    oldNode.unsubscribeTf();
+    this.rootObject.remove(oldNode);
+    oldNode.children.forEach(child => {
+      child.dispose();
+    });
+    delete(this.markers[key]);
   };
 }
 
@@ -9704,6 +9712,7 @@ class PointCloud2 extends THREE$1.Object3D {
     options = options || {};
     this.ros = options.ros;
     this.topicName = options.topic || '/points';
+    this.throttle_rate = options.throttle_rate || null;
     this.compression = options.compression || 'cbor';
     this.max_pts = options.max_pts || 10000;
     this.points = new Points(options);
@@ -9727,6 +9736,7 @@ class PointCloud2 extends THREE$1.Object3D {
       ros : this.ros,
       name : this.topicName,
       messageType : 'sensor_msgs/PointCloud2',
+      throttle_rate : this.throttle_rate,
       queue_length : 1,
       compression: this.compression
     });
@@ -9906,29 +9916,7 @@ class Urdf extends THREE$1.Object3D {
               console.warn('Could not load geometry mesh: '+uri);
             }
           } else {
-            if (!colorMaterial) {
-              colorMaterial = makeColorMaterial(0, 0, 0, 1);
-            }
-            var shapeMesh;
-            // Create a shape
-            switch (visual.geometry.type) {
-              case ROSLIB.URDF_BOX:
-                var dimension = visual.geometry.dimension;
-                var cube = new THREE$1.BoxGeometry(dimension.x, dimension.y, dimension.z);
-                shapeMesh = new THREE$1.Mesh(cube, colorMaterial);
-                break;
-              case ROSLIB.URDF_CYLINDER:
-                var radius = visual.geometry.radius;
-                var length = visual.geometry.length;
-                var cylinder = new THREE$1.CylinderGeometry(radius, radius, length, 16, 1, false);
-                shapeMesh = new THREE$1.Mesh(cylinder, colorMaterial);
-                shapeMesh.quaternion.setFromAxisAngle(new THREE$1.Vector3(1, 0, 0), Math.PI * 0.5);
-                break;
-              case ROSLIB.URDF_SPHERE:
-                var sphere = new THREE$1.SphereGeometry(visual.geometry.radius, 16);
-                shapeMesh = new THREE$1.Mesh(sphere, colorMaterial);
-                break;
-            }
+            var shapeMesh = this.createShapeMesh(visual);
             // Create a scene node with the shape
             var scene = new SceneNode({
               frameID: frameID,
@@ -9942,6 +9930,36 @@ class Urdf extends THREE$1.Object3D {
       }
     }
   };
+
+  createShapeMesh(visual) {
+    var colorMaterial = null;
+    if (!colorMaterial) {
+      colorMaterial = makeColorMaterial(0, 0, 0, 1);
+    }
+    var shapeMesh;
+    // Create a shape
+    switch (visual.geometry.type) {
+      case ROSLIB.URDF_BOX:
+        var dimension = visual.geometry.dimension;
+        var cube = new THREE$1.BoxGeometry(dimension.x, dimension.y, dimension.z);
+        shapeMesh = new THREE$1.Mesh(cube, colorMaterial);
+        break;
+      case ROSLIB.URDF_CYLINDER:
+        var radius = visual.geometry.radius;
+        var length = visual.geometry.length;
+        var cylinder = new THREE$1.CylinderGeometry(radius, radius, length, 16, 1, false);
+        shapeMesh = new THREE$1.Mesh(cylinder, colorMaterial);
+        shapeMesh.quaternion.setFromAxisAngle(new THREE$1.Vector3(1, 0, 0), Math.PI * 0.5);
+        break;
+      case ROSLIB.URDF_SPHERE:
+        var sphere = new THREE$1.SphereGeometry(visual.geometry.radius, 16);
+        shapeMesh = new THREE$1.Mesh(sphere, colorMaterial);
+        break;
+    }
+
+    return shapeMesh;
+  };
+
 
   unsubscribeTf () {
     this.children.forEach(function(n) {

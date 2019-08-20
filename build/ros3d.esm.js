@@ -922,18 +922,13 @@ class Arrow extends THREE$1.Mesh {
    *
    * @param direction - the direction to set this arrow
    */
-<<<<<<< HEAD
-  Arrow.prototype.setDirection = function setDirection (direction) {
+  setDirection(direction) {
     var axis = new THREE$1.Vector3();
     if(direction.x === 0 && direction.z === 0){
       axis.set(1, 0, 0);
     } else {
       axis.set(0, 1, 0).cross(direction);
     }
-=======
-  setDirection(direction) {
-    var axis = new THREE$1.Vector3(0, 1, 0).cross(direction);
->>>>>>> Remove eventemitter2 from bundling and mark as peerDependency, turn off babel and other commonjs bundler (leaving it for webpack) for ES5 module
     var radians = Math.acos(new THREE$1.Vector3(0, 1, 0).dot(direction.clone().normalize()));
     this.matrix = new THREE$1.Matrix4().makeRotationAxis(axis.normalize(), radians);
     this.rotation.setFromRotationMatrix(this.matrix, this.rotation.order);
@@ -1054,7 +1049,7 @@ THREE$1.STLLoader.prototype = {
         // If solid[ i ] does not match the i-th byte, then it is not an
         // ASCII STL; hence, it is binary and return true.
 
-        if (solid[i] != reader.getUint8(i, false)) { return true; }
+        if (solid[i] != reader.getUint8(i, false)) return true;
 
       }
 
@@ -1734,12 +1729,12 @@ THREE$1.OBJLoader.prototype = {
 
 			lineLength = line.length;
 
-			if ( lineLength === 0 ) { continue; }
+			if ( lineLength === 0 ) continue;
 
 			lineFirstChar = line.charAt( 0 );
 
 			// @todo invoke passed in handler if any
-			if ( lineFirstChar === '#' ) { continue; }
+			if ( lineFirstChar === '#' ) continue;
 
 			if ( lineFirstChar === 'v' ) {
 
@@ -1833,8 +1828,8 @@ THREE$1.OBJLoader.prototype = {
 
 						var parts = lineParts[ li ].split( "/" );
 
-						if ( parts[ 0 ] !== "" ) { lineVertices.push( parts[ 0 ] ); }
-						if ( parts[ 1 ] !== "" ) { lineUVs.push( parts[ 1 ] ); }
+						if ( parts[ 0 ] !== "" ) lineVertices.push( parts[ 0 ] );
+						if ( parts[ 1 ] !== "" ) lineUVs.push( parts[ 1 ] );
 
 					}
 
@@ -1908,12 +1903,12 @@ THREE$1.OBJLoader.prototype = {
 
 				}
 				var material = state.object.currentMaterial();
-				if ( material ) { material.smooth = state.object.smooth; }
+				if ( material ) material.smooth = state.object.smooth;
 
 			} else {
 
 				// Handle null terminated files without exception
-				if ( line === '\0' ) { continue; }
+				if ( line === '\0' ) continue;
 
 				throw new Error( 'THREE.OBJLoader: Unexpected line: "' + line + '"' );
 
@@ -1936,7 +1931,7 @@ THREE$1.OBJLoader.prototype = {
 			var hasVertexColors = false;
 
 			// Skip o/g line declarations that did not follow with any faces
-			if ( geometry.vertices.length === 0 ) { continue; }
+			if ( geometry.vertices.length === 0 ) continue;
 
 			var buffergeometry = new THREE$1.BufferGeometry();
 
@@ -2323,7 +2318,7 @@ THREE$1.MTLLoader.MaterialCreator.prototype = {
 
 	convert: function ( materialsInfo ) {
 
-		if ( ! this.options ) { return materialsInfo; }
+		if ( ! this.options ) return materialsInfo;
 
 		var converted = {};
 
@@ -2335,11 +2330,7 @@ THREE$1.MTLLoader.MaterialCreator.prototype = {
 
 			var covmat = {};
 
-<<<<<<< HEAD
 			converted[ mn ] = covmat;
-=======
-        if (solid[i] != reader.getUint8(i, false)) return true;
->>>>>>> Remove eventemitter2 from bundling and mark as peerDependency, turn off babel and other commonjs bundler (leaving it for webpack) for ES5 module
 
 			for ( var prop in mat ) {
 
@@ -2455,10 +2446,10 @@ THREE$1.MTLLoader.MaterialCreator.prototype = {
 		function resolveURL( baseUrl, url ) {
 
 			if ( typeof url !== 'string' || url === '' )
-				{ return ''; }
+				return '';
 
 			// Absolute URL
-			if ( /^https?:\/\//i.test( url ) ) { return url; }
+			if ( /^https?:\/\//i.test( url ) ) return url;
 
 			return baseUrl + url;
 
@@ -2466,7 +2457,7 @@ THREE$1.MTLLoader.MaterialCreator.prototype = {
 
 		function setMapForType( mapType, value ) {
 
-			if ( params[ mapType ] ) { return; } // Keep the first encountered texture
+			if ( params[ mapType ] ) return; // Keep the first encountered texture
 
 			var texParams = scope.getTextureParams( value, params );
 			var map = scope.loadTexture( resolveURL( scope.baseUrl, texParams.url ) );
@@ -2486,7 +2477,7 @@ THREE$1.MTLLoader.MaterialCreator.prototype = {
 			var value = mat[ prop ];
 			var n;
 
-			if ( value === '' ) { continue; }
+			if ( value === '' ) continue;
 
 			switch ( prop.toLowerCase() ) {
 
@@ -2586,7 +2577,7 @@ THREE$1.MTLLoader.MaterialCreator.prototype = {
 				case 'tr':
 					n = parseFloat( value );
 
-					if ( this.options && this.options.invertTrProperty ) { n = 1 - n; }
+					if ( this.options && this.options.invertTrProperty ) n = 1 - n;
 
 					if ( n > 0 ) {
 
@@ -2665,10 +2656,10 @@ THREE$1.MTLLoader.MaterialCreator.prototype = {
 
 		}
 
-		if ( loader.setCrossOrigin ) { loader.setCrossOrigin( this.crossOrigin ); }
+		if ( loader.setCrossOrigin ) loader.setCrossOrigin( this.crossOrigin );
 		texture = loader.load( url, onLoad, onProgress, onError );
 
-		if ( mapping !== undefined ) { texture.mapping = mapping; }
+		if ( mapping !== undefined ) texture.mapping = mapping;
 
 		return texture;
 
@@ -6163,8 +6154,8 @@ var MeshLoader = {
    },
    loaders: {
      'dae': function(meshRes, uri, options) {
-       var material = options.material;
-       var loader = new THREE$1.ColladaLoader();
+       const material = options.material;
+       const loader = new THREE$1.ColladaLoader();
        loader.log = function(message) {
          if (meshRes.warnings) {
            console.warn(message);
@@ -6193,8 +6184,8 @@ var MeshLoader = {
      },
 
      'obj': function(meshRes, uri, options) {
-       var material = options.material;
-       var loader = new THREE$1.OBJLoader();
+       const material = options.material;
+       const loader = new THREE$1.OBJLoader();
        loader.log = function(message) {
          if (meshRes.warnings) {
            console.warn(message);
@@ -6221,11 +6212,11 @@ var MeshLoader = {
          uri,
          function OBJFileReady(obj) {
 
-           var baseUri = THREE$1.LoaderUtils.extractUrlBase( uri );
+           const baseUri = THREE$1.LoaderUtils.extractUrlBase( uri );
 
            if (obj.materialLibraries.length) {
              // load the material libraries
-             var materialUri = obj.materialLibraries[0];
+             const materialUri = obj.materialLibraries[0];
              new THREE$1.MTLLoader().setPath(baseUri).load(
                materialUri,
                function(materials) {
@@ -6248,8 +6239,8 @@ var MeshLoader = {
      },
 
      'stl': function(meshRes, uri, options) {
-       var material = options.material;
-       var loader = new THREE$1.STLLoader();
+       const material = options.material;
+       const loader = new THREE$1.STLLoader();
        {
          loader.load(uri,
                      function ( geometry ) {
@@ -6277,11 +6268,6 @@ var MeshLoader = {
  * @author Russell Toris - rctoris@wpi.edu
  */
 
-<<<<<<< HEAD
-var MeshResource = /*@__PURE__*/(function (superclass) {
-  function MeshResource(options) {
-    superclass.call(this);
-=======
 class MeshResource extends THREE$1.Object3D {
 
   /**
@@ -6298,8 +6284,6 @@ class MeshResource extends THREE$1.Object3D {
    */
   constructor(options) {
     super();
-    var that = this;
->>>>>>> Remove eventemitter2 from bundling and mark as peerDependency, turn off babel and other commonjs bundler (leaving it for webpack) for ES5 module
     options = options || {};
     var path = options.path || '/';
     var resource = options.resource;
@@ -6427,6 +6411,7 @@ class Marker extends THREE$1.Object3D {
     options = options || {};
     var path = options.path || '/';
     var message = options.message;
+    var eps = 0.000001;
 
     // check for a trailing '/'
     if (path.substr(path.length - 1) !== '/') {
@@ -6484,8 +6469,8 @@ class Marker extends THREE$1.Object3D {
         }));
         break;
       case MARKER_CUBE:
-        // set the cube dimensions
-        var cubeGeom = new THREE$1.BoxGeometry(message.scale.x, message.scale.y, message.scale.z);
+        // set the cube dimensions, use epsilon value for 0, otherwise the current version of threejs uses 1, which is worse
+        var cubeGeom = new THREE$1.BoxGeometry(message.scale.x || eps, message.scale.y || eps, message.scale.z || eps);
         this.add(new THREE$1.Mesh(cubeGeom, colorMaterial));
         break;
       case MARKER_SPHERE:
@@ -6565,7 +6550,6 @@ class Marker extends THREE$1.Object3D {
         }
 
         // add the line
-        console.log('adding line!');
         this.add(new THREE$1.Line(lineListGeom, lineListMaterial,THREE$1.LineSegments));
         break;
       case MARKER_CUBE_LIST:
@@ -8375,9 +8359,7 @@ class MarkerClient extends EventEmitter2 {
   checkTime(name){
       var curTime = new Date().getTime();
       if (curTime - this.updatedTime[name] > this.lifetime) {
-          var oldNode = this.markers[name];
-          oldNode.unsubscribeTf();
-          this.rootObject.remove(oldNode);
+          this.removeMarker(name);
           this.emit('change');
       } else {
           var that = this;
@@ -8398,23 +8380,14 @@ class MarkerClient extends EventEmitter2 {
     });
     this.rosTopic.subscribe(this.processMessage.bind(this));
   };
-<<<<<<< HEAD
-  MarkerClient.prototype.processMessage = function processMessage (message){
-=======
 
   processMessage(message){
-    var newMarker = new Marker({
-      message : message,
-      path : this.path,
-    });
-
->>>>>>> Remove eventemitter2 from bundling and mark as peerDependency, turn off babel and other commonjs bundler (leaving it for webpack) for ES5 module
     // remove old marker from Three.Object3D children buffer
     var oldNode = this.markers[message.ns + message.id];
     this.updatedTime[message.ns + message.id] = new Date().getTime();
     if (oldNode) {
-      oldNode.unsubscribeTf();
-      this.rootObject.remove(oldNode);
+      this.removeMarker(message.ns + message.id);
+
     } else if (this.lifetime) {
       this.checkTime(message.ns + message.id);
     }
@@ -8434,6 +8407,16 @@ class MarkerClient extends EventEmitter2 {
     }
 
     this.emit('change');
+  };
+
+  removeMarker(key) {
+    var oldNode = this.markers[key];
+    oldNode.unsubscribeTf();
+    this.rootObject.remove(oldNode);
+    oldNode.children.forEach(child => {
+      child.dispose();
+    });
+    delete(this.markers[key]);
   };
 }
 
@@ -9728,6 +9711,7 @@ class PointCloud2 extends THREE$1.Object3D {
     options = options || {};
     this.ros = options.ros;
     this.topicName = options.topic || '/points';
+    this.throttle_rate = options.throttle_rate || null;
     this.compression = options.compression || 'cbor';
     this.max_pts = options.max_pts || 10000;
     this.points = new Points(options);
@@ -9751,6 +9735,7 @@ class PointCloud2 extends THREE$1.Object3D {
       ros : this.ros,
       name : this.topicName,
       messageType : 'sensor_msgs/PointCloud2',
+      throttle_rate : this.throttle_rate,
       queue_length : 1,
       compression: this.compression
     });
@@ -9930,29 +9915,7 @@ class Urdf extends THREE$1.Object3D {
               console.warn('Could not load geometry mesh: '+uri);
             }
           } else {
-            if (!colorMaterial) {
-              colorMaterial = makeColorMaterial(0, 0, 0, 1);
-            }
-            var shapeMesh;
-            // Create a shape
-            switch (visual.geometry.type) {
-              case URDF_BOX:
-                var dimension = visual.geometry.dimension;
-                var cube = new THREE$1.BoxGeometry(dimension.x, dimension.y, dimension.z);
-                shapeMesh = new THREE$1.Mesh(cube, colorMaterial);
-                break;
-              case URDF_CYLINDER:
-                var radius = visual.geometry.radius;
-                var length = visual.geometry.length;
-                var cylinder = new THREE$1.CylinderGeometry(radius, radius, length, 16, 1, false);
-                shapeMesh = new THREE$1.Mesh(cylinder, colorMaterial);
-                shapeMesh.quaternion.setFromAxisAngle(new THREE$1.Vector3(1, 0, 0), Math.PI * 0.5);
-                break;
-              case URDF_SPHERE:
-                var sphere = new THREE$1.SphereGeometry(visual.geometry.radius, 16);
-                shapeMesh = new THREE$1.Mesh(sphere, colorMaterial);
-                break;
-            }
+            var shapeMesh = this.createShapeMesh(visual);
             // Create a scene node with the shape
             var scene = new SceneNode({
               frameID: frameID,
@@ -9966,6 +9929,36 @@ class Urdf extends THREE$1.Object3D {
       }
     }
   };
+
+  createShapeMesh(visual) {
+    var colorMaterial = null;
+    if (!colorMaterial) {
+      colorMaterial = makeColorMaterial(0, 0, 0, 1);
+    }
+    var shapeMesh;
+    // Create a shape
+    switch (visual.geometry.type) {
+      case URDF_BOX:
+        var dimension = visual.geometry.dimension;
+        var cube = new THREE$1.BoxGeometry(dimension.x, dimension.y, dimension.z);
+        shapeMesh = new THREE$1.Mesh(cube, colorMaterial);
+        break;
+      case URDF_CYLINDER:
+        var radius = visual.geometry.radius;
+        var length = visual.geometry.length;
+        var cylinder = new THREE$1.CylinderGeometry(radius, radius, length, 16, 1, false);
+        shapeMesh = new THREE$1.Mesh(cylinder, colorMaterial);
+        shapeMesh.quaternion.setFromAxisAngle(new THREE$1.Vector3(1, 0, 0), Math.PI * 0.5);
+        break;
+      case URDF_SPHERE:
+        var sphere = new THREE$1.SphereGeometry(visual.geometry.radius, 16);
+        shapeMesh = new THREE$1.Mesh(sphere, colorMaterial);
+        break;
+    }
+
+    return shapeMesh;
+  };
+
 
   unsubscribeTf () {
     this.children.forEach(function(n) {
@@ -11108,12 +11101,4 @@ class Viewer {
   };
 }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-export { MARKER_ARROW, MARKER_CUBE, MARKER_SPHERE, MARKER_CYLINDER, MARKER_LINE_STRIP, MARKER_LINE_LIST, MARKER_CUBE_LIST, MARKER_SPHERE_LIST, MARKER_POINTS, MARKER_TEXT_VIEW_FACING, MARKER_MESH_RESOURCE, MARKER_TRIANGLE_LIST, INTERACTIVE_MARKER_KEEP_ALIVE, INTERACTIVE_MARKER_POSE_UPDATE, INTERACTIVE_MARKER_MENU_SELECT, INTERACTIVE_MARKER_BUTTON_CLICK, INTERACTIVE_MARKER_MOUSE_DOWN, INTERACTIVE_MARKER_MOUSE_UP, INTERACTIVE_MARKER_NONE, INTERACTIVE_MARKER_MENU, INTERACTIVE_MARKER_BUTTON, INTERACTIVE_MARKER_MOVE_AXIS, INTERACTIVE_MARKER_MOVE_PLANE, INTERACTIVE_MARKER_ROTATE_AXIS, INTERACTIVE_MARKER_MOVE_ROTATE, INTERACTIVE_MARKER_MOVE_3D, INTERACTIVE_MARKER_ROTATE_3D, INTERACTIVE_MARKER_MOVE_ROTATE_3D, INTERACTIVE_MARKER_INHERIT, INTERACTIVE_MARKER_FIXED, INTERACTIVE_MARKER_VIEW_FACING, makeColorMaterial, intersectPlane, findClosestPoint, closestAxisPoint, DepthCloud, InteractiveMarker, InteractiveMarkerClient, InteractiveMarkerControl, InteractiveMarkerHandle, InteractiveMarkerMenu, Marker, MarkerArrayClient, MarkerClient, Arrow, Arrow2, Axes, Grid, MeshLoader, MeshResource, TriangleList, OccupancyGrid, OccupancyGridClient, Odometry, Path$1 as Path, Point, Polygon, Pose$1 as Pose, PoseArray, PoseWithCovariance, LaserScan, Points$1 as Points, PointCloud2, TFAxes, Urdf, UrdfClient, Highlighter, MouseHandler, OrbitControls, SceneNode, Viewer };
-=======
-export { MARKER_ARROW, MARKER_CUBE, MARKER_SPHERE, MARKER_CYLINDER, MARKER_LINE_STRIP, MARKER_LINE_LIST, MARKER_CUBE_LIST, MARKER_SPHERE_LIST, MARKER_POINTS, MARKER_TEXT_VIEW_FACING, MARKER_MESH_RESOURCE, MARKER_TRIANGLE_LIST, INTERACTIVE_MARKER_KEEP_ALIVE, INTERACTIVE_MARKER_POSE_UPDATE, INTERACTIVE_MARKER_MENU_SELECT, INTERACTIVE_MARKER_BUTTON_CLICK, INTERACTIVE_MARKER_MOUSE_DOWN, INTERACTIVE_MARKER_MOUSE_UP, INTERACTIVE_MARKER_NONE, INTERACTIVE_MARKER_MENU, INTERACTIVE_MARKER_BUTTON, INTERACTIVE_MARKER_MOVE_AXIS, INTERACTIVE_MARKER_MOVE_PLANE, INTERACTIVE_MARKER_ROTATE_AXIS, INTERACTIVE_MARKER_MOVE_ROTATE, INTERACTIVE_MARKER_MOVE_3D, INTERACTIVE_MARKER_ROTATE_3D, INTERACTIVE_MARKER_MOVE_ROTATE_3D, INTERACTIVE_MARKER_INHERIT, INTERACTIVE_MARKER_FIXED, INTERACTIVE_MARKER_VIEW_FACING, makeColorMaterial, intersectPlane, findClosestPoint, closestAxisPoint, DepthCloud, InteractiveMarker, InteractiveMarkerClient, InteractiveMarkerControl, InteractiveMarkerHandle, InteractiveMarkerMenu, Marker, MarkerArrayClient, MarkerClient, Arrow, Arrow2, Axes, Grid, MeshResource, TriangleList, OccupancyGrid, OccupancyGridClient, Odometry, Path, Point, Polygon, Pose$1 as Pose, PoseArray, PoseWithCovariance, LaserScan, Points, PointCloud2, TFAxes, Urdf, UrdfClient, Highlighter, MouseHandler, OrbitControls, SceneNode, Viewer };
->>>>>>> Don't bundle three.js for es6 and commonjs modules
-=======
-export { MARKER_ARROW, MARKER_CUBE, MARKER_SPHERE, MARKER_CYLINDER, MARKER_LINE_STRIP, MARKER_LINE_LIST, MARKER_CUBE_LIST, MARKER_SPHERE_LIST, MARKER_POINTS, MARKER_TEXT_VIEW_FACING, MARKER_MESH_RESOURCE, MARKER_TRIANGLE_LIST, INTERACTIVE_MARKER_KEEP_ALIVE, INTERACTIVE_MARKER_POSE_UPDATE, INTERACTIVE_MARKER_MENU_SELECT, INTERACTIVE_MARKER_BUTTON_CLICK, INTERACTIVE_MARKER_MOUSE_DOWN, INTERACTIVE_MARKER_MOUSE_UP, INTERACTIVE_MARKER_NONE, INTERACTIVE_MARKER_MENU, INTERACTIVE_MARKER_BUTTON, INTERACTIVE_MARKER_MOVE_AXIS, INTERACTIVE_MARKER_MOVE_PLANE, INTERACTIVE_MARKER_ROTATE_AXIS, INTERACTIVE_MARKER_MOVE_ROTATE, INTERACTIVE_MARKER_MOVE_3D, INTERACTIVE_MARKER_ROTATE_3D, INTERACTIVE_MARKER_MOVE_ROTATE_3D, INTERACTIVE_MARKER_INHERIT, INTERACTIVE_MARKER_FIXED, INTERACTIVE_MARKER_VIEW_FACING, makeColorMaterial, intersectPlane, findClosestPoint, closestAxisPoint, DepthCloud, CloseCloud, InteractiveMarker, InteractiveMarkerClient, InteractiveMarkerControl, InteractiveMarkerHandle, InteractiveMarkerMenu, Marker, MarkerArrayClient, MarkerClient, Arrow, Arrow2, Axes, Grid, MeshResource, TriangleList, OccupancyGrid, OccupancyGridClient, Odometry, Path, Point, Polygon, Pose$1 as Pose, PoseArray, PoseWithCovariance, LaserScan, Points, PointCloud2, TFAxes, Urdf, UrdfClient, Highlighter, MouseHandler, OrbitControls, SceneNode, Viewer };
->>>>>>> Add support for close cloud (divides width and height by 2?), proper cleanup for threejs, no memory leaks anymore.
+export { MARKER_ARROW, MARKER_CUBE, MARKER_SPHERE, MARKER_CYLINDER, MARKER_LINE_STRIP, MARKER_LINE_LIST, MARKER_CUBE_LIST, MARKER_SPHERE_LIST, MARKER_POINTS, MARKER_TEXT_VIEW_FACING, MARKER_MESH_RESOURCE, MARKER_TRIANGLE_LIST, INTERACTIVE_MARKER_KEEP_ALIVE, INTERACTIVE_MARKER_POSE_UPDATE, INTERACTIVE_MARKER_MENU_SELECT, INTERACTIVE_MARKER_BUTTON_CLICK, INTERACTIVE_MARKER_MOUSE_DOWN, INTERACTIVE_MARKER_MOUSE_UP, INTERACTIVE_MARKER_NONE, INTERACTIVE_MARKER_MENU, INTERACTIVE_MARKER_BUTTON, INTERACTIVE_MARKER_MOVE_AXIS, INTERACTIVE_MARKER_MOVE_PLANE, INTERACTIVE_MARKER_ROTATE_AXIS, INTERACTIVE_MARKER_MOVE_ROTATE, INTERACTIVE_MARKER_MOVE_3D, INTERACTIVE_MARKER_ROTATE_3D, INTERACTIVE_MARKER_MOVE_ROTATE_3D, INTERACTIVE_MARKER_INHERIT, INTERACTIVE_MARKER_FIXED, INTERACTIVE_MARKER_VIEW_FACING, makeColorMaterial, intersectPlane, findClosestPoint, closestAxisPoint, DepthCloud, CloseCloud, InteractiveMarker, InteractiveMarkerClient, InteractiveMarkerControl, InteractiveMarkerHandle, InteractiveMarkerMenu, Marker, MarkerArrayClient, MarkerClient, Arrow, Arrow2, Axes, Grid, MeshLoader, MeshResource, TriangleList, OccupancyGrid, OccupancyGridClient, Odometry, Path, Point, Polygon, Pose$1 as Pose, PoseArray, PoseWithCovariance, LaserScan, Points, PointCloud2, TFAxes, Urdf, UrdfClient, Highlighter, MouseHandler, OrbitControls, SceneNode, Viewer };
