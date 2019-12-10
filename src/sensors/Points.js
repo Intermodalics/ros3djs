@@ -30,6 +30,7 @@ ROS3D.Points = function(options) {
   this.material = options.material || {};
   this.colorsrc = options.colorsrc;
   this.colormap = options.colormap;
+  this.frameID = undefined;
 
   if(('color' in options) || ('size' in options) || ('texture' in options)) {
       console.warn(
@@ -98,6 +99,7 @@ ROS3D.Points.prototype.setup = function(frame, point_step, fields)
             object : this.object
         });
 
+        this.frameID = frame;
         this.rootObject.add(this.sn);
     }
     return (this.messageCount++ % this.messageRatio) === 0;
@@ -124,4 +126,5 @@ ROS3D.Points.prototype.dispose = function(n)
   if (this.colors) {this.colors.array = null}
   this.colors = null;
   this.rootObject.remove(this.sn);
+  if (this.tfClient && this.frameID) {this.tfClient.unsubscribe(this.frameID)}
 };
