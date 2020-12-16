@@ -1918,7 +1918,7 @@ THREE$1.OBJLoader.prototype = {
 
 		state.finalize();
 
-		var container = new THREE$1.Group();
+		var container = new THREE$1.Object3D();
 		container.materialLibraries = [].concat( state.materialLibraries );
 
 		for ( var i = 0, l = state.objects.length; i < l; i ++ ) {
@@ -5791,7 +5791,7 @@ THREE$1.ColladaLoader.prototype = {
 
       } else {
 
-        object = (type === 'JOINT') ? new THREE$1.Bone() : new THREE$1.Group();
+        object = (type === 'JOINT') ? new THREE$1.Bone() : new THREE$1.Object3D();
 
         for (var i = 0; i < objects.length; i++) {
 
@@ -5936,7 +5936,7 @@ THREE$1.ColladaLoader.prototype = {
 
     function buildVisualScene(data) {
 
-      var group = new THREE$1.Group();
+      var group = new THREE$1.Object3D();
       group.name = data.name;
 
       var children = data.children;
@@ -6155,7 +6155,7 @@ var MeshLoader = {
    loaders: {
      'dae': function(meshRes, uri, options) {
        const material = options.material;
-       const loader = new THREE$1.ColladaLoader();
+       const loader = new THREE$1.ColladaLoader(options.loader);
        loader.log = function(message) {
          if (meshRes.warnings) {
            console.warn(message);
@@ -6185,7 +6185,7 @@ var MeshLoader = {
 
      'obj': function(meshRes, uri, options) {
        const material = options.material;
-       const loader = new THREE$1.OBJLoader();
+       const loader = new THREE$1.OBJLoader(options.loader);
        loader.log = function(message) {
          if (meshRes.warnings) {
            console.warn(message);
@@ -6217,7 +6217,7 @@ var MeshLoader = {
            if (obj.materialLibraries.length) {
              // load the material libraries
              const materialUri = obj.materialLibraries[0];
-             new THREE$1.MTLLoader().setPath(baseUri).load(
+             new THREE$1.MTLLoader(options.loader).setPath(baseUri).load(
                materialUri,
                function(materials) {
                   materials.preload();
@@ -6240,7 +6240,7 @@ var MeshLoader = {
 
      'stl': function(meshRes, uri, options) {
        const material = options.material;
-       const loader = new THREE$1.STLLoader();
+       const loader = new THREE$1.STLLoader(options.loader);
        {
          loader.load(uri,
                      function ( geometry ) {
@@ -8245,9 +8245,7 @@ class MarkerArrayClient extends EventEmitter2 {
         if(message.ns + message.id in this.markers) { // "MODIFY"
           updated = this.markers[message.ns + message.id].children[0].update(message);
           if(!updated) { // "REMOVE"
-            this.markers[message.ns + message.id].unsubscribeTf();
-            this.markers[message.ns + message.id].children[0].dispose();
-            this.rootObject.remove(this.markers[message.ns + message.id]);
+            this.removeMarker(message.ns + message.id);
           }
         }
         if(!updated) { // "ADD"
@@ -8267,18 +8265,11 @@ class MarkerArrayClient extends EventEmitter2 {
         console.warn('Received marker message with deprecated action identifier "1"');
       }
       else if(message.action === 2) { // "DELETE"
-        if (message.ns + message.id in this.markers) {
-          this.markers[message.ns + message.id].unsubscribeTf();
-          this.markers[message.ns + message.id].children[0].dispose();
-          this.rootObject.remove(this.markers[message.ns + message.id]);
-          delete this.markers[message.ns + message.id];
-        }
+        this.removeMarker(message.ns + message.id);
       }
       else if(message.action === 3) { // "DELETE ALL"
         for (var m in this.markers){
-          this.markers[m].unsubscribeTf();
-          this.markers[m].children[0].dispose();
-          this.rootObject.remove(this.markers[m]);
+          this.removeMarker(m);
         }
         this.markers = {};
       }
@@ -8296,6 +8287,19 @@ class MarkerArrayClient extends EventEmitter2 {
     }
   };
 
+  removeMarker(key) {
+    var oldNode = this.markers[key];
+    if(!oldNode) {
+      return;
+    }
+    oldNode.unsubscribeTf();
+    this.rootObject.remove(oldNode);
+    oldNode.children.forEach(child => {
+      child.dispose();
+    });
+    delete(this.markers[key]);
+  }
+
   removeArray() {
     this.rosTopic.unsubscribe();
     for (var key in this.markers) {
@@ -8306,7 +8310,7 @@ class MarkerArrayClient extends EventEmitter2 {
       }
     }
     this.markers = {};
-  };
+  }
 }
 
 /**
@@ -8411,6 +8415,9 @@ class MarkerClient extends EventEmitter2 {
 
   removeMarker(key) {
     var oldNode = this.markers[key];
+    if(!oldNode) {
+      return;
+    }
     oldNode.unsubscribeTf();
     this.rootObject.remove(oldNode);
     oldNode.children.forEach(child => {
@@ -8673,47 +8680,23 @@ class OccupancyGrid extends THREE$1.Mesh {
    */
   constructor(options) {
     options = options || {};
-    var message = options.message;
-    var color = options.color || {r:255,g:255,b:255};
+    var message = options.message;  
     var opacity = options.opacity || 1.0;
+    var color = options.color || {r:255,g:255,b:255,a:255};
 
     // create the geometry
-    var width = message.info.width;
-    var height = message.info.height;
+    var info = message.info;
+    var origin = info.origin;
+    var width = info.width;
+    var height = info.height;
     var geom = new THREE$1.PlaneBufferGeometry(width, height);
 
     // create the color material
-    var imageData = new Uint8Array(width * height * 3);
-    for ( var row = 0; row < height; row++) {
-      for ( var col = 0; col < width; col++) {
-        // determine the index into the map data
-        var mapI = col + ((height - row - 1) * width);
-        // determine the value
-        var data = message.data[mapI];
-        var val;
-        if (data === 100) {
-          val = 0;
-        } else if (data === 0) {
-          val = 255;
-        } else {
-          val = 127;
-        }
-
-        // determine the index into the image data array
-        var i = (col + (row * width)) * 3;
-        // r
-        imageData[i] = (val * color.r) / 255;
-        // g
-        imageData[++i] = (val * color.g) / 255;
-        // b
-        imageData[++i] = (val * color.b) / 255;
-      }
-    }
-
-    var texture = new THREE$1.DataTexture(imageData, width, height, THREE$1.RGBFormat);
+    var imageData = new Uint8Array(width * height * 4);
+    var texture = new THREE$1.DataTexture(imageData, width, height, THREE$1.RGBAFormat);
     texture.flipY = true;
-    texture.minFilter = THREE$1.LinearFilter;
-    texture.magFilter = THREE$1.LinearFilter;
+    texture.minFilter = THREE$1.NearestFilter;
+    texture.magFilter = THREE$1.NearestFilter;
     texture.needsUpdate = true;
 
     var material = new THREE$1.MeshBasicMaterial({
@@ -8726,17 +8709,85 @@ class OccupancyGrid extends THREE$1.Mesh {
     // create the mesh
     super(geom, material);
     // move the map so the corner is at X, Y and correct orientation (informations from message.info)
+
+    // assign options to this for subclasses
+    Object.assign(this, options);
+
     this.quaternion.copy(new THREE$1.Quaternion(
-        message.info.origin.orientation.x,
-        message.info.origin.orientation.y,
-        message.info.origin.orientation.z,
-        message.info.origin.orientation.w
+        origin.orientation.x,
+        origin.orientation.y,
+        origin.orientation.z,
+        origin.orientation.w
     ));
-    this.position.x = (width * message.info.resolution) / 2 + message.info.origin.position.x;
-    this.position.y = (height * message.info.resolution) / 2 + message.info.origin.position.y;
-    this.position.z = message.info.origin.position.z;
-    this.scale.x = message.info.resolution;
-    this.scale.y = message.info.resolution;
+    this.position.x = (width * info.resolution) / 2 + origin.position.x;
+    this.position.y = (height * info.resolution) / 2 + origin.position.y;
+    this.position.z = origin.position.z;
+    this.scale.x = info.resolution;
+    this.scale.y = info.resolution;
+      
+    var data = message.data;
+    // update the texture (after the the super call and this are accessible)
+    this.color = color;
+    this.material = material;
+    this.texture = texture;
+
+    for ( var row = 0; row < height; row++) {
+      for ( var col = 0; col < width; col++) {
+        
+        // determine the index into the map data
+        var invRow = (height - row - 1);
+        var mapI = col + (invRow * width);
+        // determine the value      
+        var val = this.getValue(mapI, invRow, col, data);
+              
+        // determine the color
+        var color = this.getColor(mapI, invRow, col, val);
+
+        // determine the index into the image data array
+        var i = (col + (row * width)) * 4;
+
+        // copy the color
+        imageData.set(color, i);
+      }
+    }
+
+    texture.needsUpdate = true;
+
+  };
+
+  dispose() {
+    this.material.dispose();
+    this.texture.dispose();
+  };
+
+  /**
+   * Returns the value for a given grid cell
+   * @param {int} index the current index of the cell
+   * @param {int} row the row of the cell
+   * @param {int} col the column of the cell
+   * @param {object} data the data buffer
+   */
+  getValue(index, row, col, data) {
+    return data[index];
+  };
+
+  /**
+   * Returns a color value given parameters of the position in the grid; the default implementation
+   * scales the default color value by the grid value. Subclasses can extend this functionality
+   * (e.g. lookup a color in a color map).
+   * @param {int} index the current index of the cell
+   * @param {int} row the row of the cell
+   * @param {int} col the column of the cell
+   * @param {float} value the value of the cell
+   * @returns r,g,b,a array of values from 0 to 255 representing the color values for each channel
+   */
+  getColor(index, row, col, value) {
+    return [
+      (value * this.color.r) / 255,
+      (value * this.color.g) / 255,
+      (value * this.color.b) / 255,
+      255
+    ];
   };
 }
 
@@ -8804,6 +8855,7 @@ class OccupancyGridClient extends EventEmitter2 {
       queue_length : 1,
       compression : this.compression
     });
+    this.sceneNode = null;
     this.rosTopic.subscribe(this.processMessage.bind(this));
   };
 
@@ -8815,7 +8867,8 @@ class OccupancyGridClient extends EventEmitter2 {
         // grid is of type ROS3D.SceneNode
         this.currentGrid.unsubscribeTf();
       }
-      this.rootObject.remove(this.currentGrid);
+      this.sceneNode.remove(this.currentGrid);
+      this.currentGrid.dispose();
     }
 
     var newGrid = new OccupancyGrid({
@@ -8827,17 +8880,21 @@ class OccupancyGridClient extends EventEmitter2 {
     // check if we care about the scene
     if (this.tfClient) {
       this.currentGrid = newGrid;
-      this.sceneNode = new SceneNode({
-        frameID : message.header.frame_id,
-        tfClient : this.tfClient,
-        object : newGrid,
-        pose : this.offsetPose
-      });
+      if (this.sceneNode === null) {
+        this.sceneNode = new SceneNode({
+          frameID : message.header.frame_id,
+          tfClient : this.tfClient,
+          object : newGrid,
+          pose : this.offsetPose
+        });
+        this.rootObject.add(this.sceneNode);
+      } else {
+        this.sceneNode.add(this.currentGrid);
+      }
     } else {
       this.sceneNode = this.currentGrid = newGrid;
+      this.rootObject.add(this.currentGrid);
     }
-
-    this.rootObject.add(this.sceneNode);
 
     this.emit('change');
 
@@ -9910,12 +9967,13 @@ class Urdf extends THREE$1.Object3D {
                   tfClient : tfClient,
                   object : mesh
               });
-              this.add(sceneNode);
+              sceneNode.name = visual.name;
+              this.add(sceneNode);            
             } else {
               console.warn('Could not load geometry mesh: '+uri);
             }
           } else {
-            var shapeMesh = this.createShapeMesh(visual);
+            var shapeMesh = this.createShapeMesh(visual, options);
             // Create a scene node with the shape
             var scene = new SceneNode({
               frameID: frameID,
@@ -9923,6 +9981,7 @@ class Urdf extends THREE$1.Object3D {
                 tfClient: tfClient,
                 object: shapeMesh
             });
+            scene.name = visual.name;
             this.add(scene);
           }
         }
@@ -9930,7 +9989,7 @@ class Urdf extends THREE$1.Object3D {
     }
   };
 
-  createShapeMesh(visual) {
+  createShapeMesh(visual, options) {
     var colorMaterial = null;
     if (!colorMaterial) {
       colorMaterial = makeColorMaterial(0, 0, 0, 1);
@@ -10241,17 +10300,16 @@ class MouseHandler extends THREE$1.EventDispatcher {
     var top = pos_y - rect.top - target.clientTop + target.scrollTop;
     var deviceX = left / target.clientWidth * 2 - 1;
     var deviceY = -top / target.clientHeight * 2 + 1;
-    var vector = new THREE$1.Vector3(deviceX, deviceY, 0.5);
-    vector.unproject(this.camera);
-    // use the THREE raycaster
-    var mouseRaycaster = new THREE$1.Raycaster(this.camera.position.clone(), vector.sub(
-        this.camera.position).normalize());
+    var mousePos = new THREE$1.Vector2(deviceX, deviceY);
+
+    var mouseRaycaster = new THREE$1.Raycaster();
     mouseRaycaster.linePrecision = 0.001;
+    mouseRaycaster.setFromCamera(mousePos, this.camera);
     var mouseRay = mouseRaycaster.ray;
 
     // make our 3d mouse event
     var event3D = {
-      mousePos : new THREE$1.Vector2(deviceX, deviceY),
+      mousePos : mousePos,
       mouseRay : mouseRay,
       domEvent : domEvent,
       camera : this.camera,
@@ -10927,6 +10985,7 @@ class Viewer {
    * @constructor
    * @param options - object with following keys:
    *
+   *  * elem - the elem to place the viewer in (overrides divID if provided)
    *  * divID - the ID of the div to place the viewer in [optional (if canvas omitted)].
    *  * canvas - the canvas which will be used for rendering [optional (if divID omitted)].
    *  * width - the initial width, in pixels, of the canvas
@@ -10946,6 +11005,7 @@ class Viewer {
   constructor(options) {
     options = options || {};
     var divID = options.divID;
+    var elem = options.elem;
     var canvas = (!!options.canvas &&
                   options.canvas.nodeName.toLowerCase() === 'canvas')
                     ? options.canvas
@@ -11000,7 +11060,7 @@ class Viewer {
     this.scene.add(this.directionalLight);
 
     // propagates mouse events to three.js objects
-    this.selectableObjects = new THREE$1.Object3D();
+    this.selectableObjects = new THREE$1.Group();
     this.scene.add(this.selectableObjects);
     var mouseHandler = new MouseHandler({
       renderer : this.renderer,
@@ -11019,7 +11079,8 @@ class Viewer {
 
     // add the renderer to the page
     if (divID && !canvas) {
-      document.getElementById(divID).appendChild(this.renderer.domElement);
+      var node = elem || document.getElementById(divID);  
+      node.appendChild(this.renderer.domElement);
     } else if (!canvas) {
       throw new Error('No canvas nor HTML container provided for rendering.');
     }
