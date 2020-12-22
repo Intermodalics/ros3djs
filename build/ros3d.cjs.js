@@ -6942,6 +6942,7 @@ var InteractiveMarker = /*@__PURE__*/(function (superclass) {
 
     // add each control message
     handle.controls.forEach(function(controlMessage) {
+      if (!controlMessage.name) { return }
       that.add(new InteractiveMarkerControl({
         parent : that,
         handle : handle,
@@ -7423,7 +7424,14 @@ var InteractiveMarkerHandle = /*@__PURE__*/(function (EventEmitter2$$1) {
       mouse_point_valid : mousePointValid,
       menu_entry_id : menuEntryID
     };
-    this.feedbackTopic.publish(feedback);
+
+    if (this.feedbackTopic && this.feedbackTopic.publish) {
+      this.feedbackTopic.publish(feedback);
+    }
+
+    if (this.message._ref.onFeedback) {
+      this.message._ref.onFeedback(feedback);
+    }
   };
 
   return InteractiveMarkerHandle;
@@ -7435,6 +7443,7 @@ var InteractiveMarkerHandle = /*@__PURE__*/(function (EventEmitter2$$1) {
 
 var InteractiveMarkerClient = function InteractiveMarkerClient(options) {
   options = options || {};
+  this.InteractiveMarkerClass = options.InteractiveMarkerClass || InteractiveMarker;
   this.ros = options.ros;
   this.tfClient = options.tfClient;
   this.topicName = options.topic;
@@ -7462,29 +7471,37 @@ InteractiveMarkerClient.prototype.subscribe = function subscribe (topic) {
   // unsubscribe to the other topics
   this.unsubscribe();
 
-  this.updateTopic = new ROSLIB.Topic({
-    ros : this.ros,
-    name : topic + '/tunneled/update',
-    messageType : 'visualization_msgs/InteractiveMarkerUpdate',
-    compression : 'png'
-  });
-  this.updateTopic.subscribe(this.processUpdate.bind(this));
-
-  this.feedbackTopic = new ROSLIB.Topic({
-    ros : this.ros,
-    name : topic + '/feedback',
-    messageType : 'visualization_msgs/InteractiveMarkerFeedback',
-    compression : 'png'
-  });
-  this.feedbackTopic.advertise();
-
-  this.initService = new ROSLIB.Service({
-    ros : this.ros,
-    name : topic + '/tunneled/get_init',
-    serviceType : 'demo_interactive_markers/GetInit'
-  });
-  var request = new ROSLIB.ServiceRequest({});
-  this.initService.callService(request, this.processInit.bind(this));
+  if (topic) {
+    this.updateTopic = new ROSLIB.Topic({
+      ros : this.ros,
+      name : topic + '/tunneled/update',
+      messageType : 'visualization_msgs/InteractiveMarkerUpdate',
+      compression : 'png'
+    });
+    this.updateTopic.subscribe(this.processUpdate.bind(this));
+    
+    this.feedbackTopic = new ROSLIB.Topic({
+      ros : this.ros,
+      name : topic + '/feedback',
+      messageType : 'visualization_msgs/InteractiveMarkerFeedback',
+      compression : 'png'
+    });
+    this.feedbackTopic.advertise();
+    
+    this.initService = new ROSLIB.Service({
+      ros : this.ros,
+      name : topic + '/tunneled/get_init',
+      serviceType : 'demo_interactive_markers/GetInit'
+    });
+    var request = new ROSLIB.ServiceRequest({});
+    this.initService.callService(request, this.processInit.bind(this));
+  } else {
+    this.processInit({
+      msg: {
+        markers: [],
+      },
+    });
+  }
 };
 /**
  * Unsubscribe from the current interactive marker topic.
@@ -7554,12 +7571,13 @@ InteractiveMarkerClient.prototype.processUpdate = function processUpdate (messag
       message : msg,
       feedbackTopic : that.feedbackTopic,
       tfClient : that.tfClient,
-      menuFontSize : that.menuFontSize
+      menuFontSize : that.menuFontSize,
     });
     that.interactiveMarkers[msg.name] = handle;
 
     // create the actual marker
-    var intMarker = new InteractiveMarker({
+    var InteractiveMarkerClass = that.InteractiveMarkerClass;
+    var intMarker = new InteractiveMarkerClass({
       handle : handle,
       camera : that.camera,
       path : that.path,
@@ -7701,6 +7719,9 @@ var MarkerArrayClient = /*@__PURE__*/(function (EventEmitter2$$1) {
     this.tfClient = options.tfClient;
     this.rootObject = options.rootObject || new THREE$1.Object3D();
     this.path = options.path || '/';
+    this.renderOrder = options.renderOrder || 0;
+    this.markerClass = options.markerClass || Marker;
+
 
     // Markers that are displayed (Map ns+id--Marker)
     this.markers = {};
@@ -7731,16 +7752,20 @@ var MarkerArrayClient = /*@__PURE__*/(function (EventEmitter2$$1) {
         if(message.ns + message.id in this.markers) { // "MODIFY"
           updated = this.markers[message.ns + message.id].children[0].update(message);
           if(!updated) { // "REMOVE"
-            this.removeMarker(message.ns + message.id);
+            this.markers[message.ns + message.id].unsubscribeTf();
+            this.markers[message.ns + message.id].children[0].dispose();
+            this.rootObject.remove(this.markers[message.ns + message.id]);
           }
         }
         if(!updated) { // "ADD"
-          var newMarker = new Marker({
+          var MarkerClass = this.markerClass;
+          var newMarker = new MarkerClass({
+            renderOrder: this.renderOrder,
             message : message,
             path : this.path,
           });
           this.markers[message.ns + message.id] = new SceneNode({
-            frameID : message.header.frame_id,
+            frameID: message.header.frame_id.replace(/^\//, ''),
             tfClient : this.tfClient,
             object : newMarker
           });
@@ -7751,11 +7776,18 @@ var MarkerArrayClient = /*@__PURE__*/(function (EventEmitter2$$1) {
         console.warn('Received marker message with deprecated action identifier "1"');
       }
       else if(message.action === 2) { // "DELETE"
-        this.removeMarker(message.ns + message.id);
+        if (message.ns + message.id in this.markers) {
+          this.markers[message.ns + message.id].unsubscribeTf();
+          this.markers[message.ns + message.id].children[0].dispose();
+          this.rootObject.remove(this.markers[message.ns + message.id]);
+          delete this.markers[message.ns + message.id];
+        }
       }
       else if(message.action === 3) { // "DELETE ALL"
         for (var m in this.markers){
-          this.removeMarker(m);
+          this.markers[m].unsubscribeTf();
+          this.markers[m].children[0].dispose();
+          this.rootObject.remove(this.markers[m]);
         }
         this.markers = {};
       }
@@ -7772,16 +7804,15 @@ var MarkerArrayClient = /*@__PURE__*/(function (EventEmitter2$$1) {
     }
   };
   MarkerArrayClient.prototype.removeMarker = function removeMarker (key) {
-    var oldNode = this.markers[key];
-    if(!oldNode) {
-      return;
+    this.rosTopic.unsubscribe();
+    for (var key in this.markers) {
+      if (this.markers.hasOwnProperty(key)) {
+        this.markers[key].unsubscribeTf();
+        this.markers[key].children[0].dispose();
+        this.rootObject.remove(this.markers[key]);
+      }
     }
-    oldNode.unsubscribeTf();
-    this.rootObject.remove(oldNode);
-    oldNode.children.forEach(function (child) {
-      child.dispose();
-    });
-    delete(this.markers[key]);
+    this.markers = {};
   };
 
   return MarkerArrayClient;

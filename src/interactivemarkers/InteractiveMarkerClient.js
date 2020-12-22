@@ -20,6 +20,7 @@
 ROS3D.InteractiveMarkerClient = function(options) {
   var that = this;
   options = options || {};
+  this.InteractiveMarkerClass = options.InteractiveMarkerClass || ROS3D.InteractiveMarker;
   this.ros = options.ros;
   this.tfClient = options.tfClient;
   this.topicName = options.topic;
@@ -48,29 +49,37 @@ ROS3D.InteractiveMarkerClient.prototype.subscribe = function(topic) {
   // unsubscribe to the other topics
   this.unsubscribe();
 
-  this.updateTopic = new ROSLIB.Topic({
-    ros : this.ros,
-    name : topic + '/tunneled/update',
-    messageType : 'visualization_msgs/InteractiveMarkerUpdate',
-    compression : 'png'
-  });
-  this.updateTopic.subscribe(this.processUpdate.bind(this));
-
-  this.feedbackTopic = new ROSLIB.Topic({
-    ros : this.ros,
-    name : topic + '/feedback',
-    messageType : 'visualization_msgs/InteractiveMarkerFeedback',
-    compression : 'png'
-  });
-  this.feedbackTopic.advertise();
-
-  this.initService = new ROSLIB.Service({
-    ros : this.ros,
-    name : topic + '/tunneled/get_init',
-    serviceType : 'demo_interactive_markers/GetInit'
-  });
-  var request = new ROSLIB.ServiceRequest({});
-  this.initService.callService(request, this.processInit.bind(this));
+  if (topic) {
+    this.updateTopic = new ROSLIB.Topic({
+      ros : this.ros,
+      name : topic + '/tunneled/update',
+      messageType : 'visualization_msgs/InteractiveMarkerUpdate',
+      compression : 'png'
+    });
+    this.updateTopic.subscribe(this.processUpdate.bind(this));
+  
+    this.feedbackTopic = new ROSLIB.Topic({
+      ros : this.ros,
+      name : topic + '/feedback',
+      messageType : 'visualization_msgs/InteractiveMarkerFeedback',
+      compression : 'png'
+    });
+    this.feedbackTopic.advertise();
+  
+    this.initService = new ROSLIB.Service({
+      ros : this.ros,
+      name : topic + '/tunneled/get_init',
+      serviceType : 'demo_interactive_markers/GetInit'
+    });
+    var request = new ROSLIB.ServiceRequest({});
+    this.initService.callService(request, this.processInit.bind(this));
+  } else {
+    this.processInit({
+      msg: {
+        markers: [],
+      },
+    });
+  }
 };
 
 /**
@@ -143,12 +152,13 @@ ROS3D.InteractiveMarkerClient.prototype.processUpdate = function(message) {
       message : msg,
       feedbackTopic : that.feedbackTopic,
       tfClient : that.tfClient,
-      menuFontSize : that.menuFontSize
+      menuFontSize : that.menuFontSize,
     });
     that.interactiveMarkers[msg.name] = handle;
 
     // create the actual marker
-    var intMarker = new ROS3D.InteractiveMarker({
+    const InteractiveMarkerClass = that.InteractiveMarkerClass
+    var intMarker = new InteractiveMarkerClass({
       handle : handle,
       camera : that.camera,
       path : that.path,

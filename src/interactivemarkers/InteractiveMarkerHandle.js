@@ -187,5 +187,12 @@ ROS3D.InteractiveMarkerHandle.prototype.sendFeedback = function(eventType, click
     mouse_point_valid : mousePointValid,
     menu_entry_id : menuEntryID
   };
-  this.feedbackTopic.publish(feedback);
+
+  if (this.feedbackTopic && this.feedbackTopic.publish) {
+    this.feedbackTopic.publish(feedback);
+  }
+
+  if (this.message._ref.onFeedback) {
+    this.message._ref.onFeedback(feedback);
+  }
 };

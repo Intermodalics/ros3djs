@@ -41,6 +41,8 @@ ROS3D.InteractiveMarker = function(options) {
 
   // add each control message
   handle.controls.forEach(function(controlMessage) {
+    if (!controlMessage.name) { return };
+
     that.add(new ROS3D.InteractiveMarkerControl({
       parent : that,
       handle : handle,
