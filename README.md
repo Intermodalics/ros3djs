@@ -1,3 +1,16 @@
+# Information about this fork
+
+- We try to keep all features that might generalize to other use cases in this package. 
+- There are still some custom features related to Pickit, e.g. rendering of the markers, which are maintained in the Pickit repo.
+
+Following modules have been quite customized and changes need to be manually carried over, if they seem relevant:
+- `Marker.js`     (Custom rendering of lines, via Line2)
+- `CloseCloud.js` (already removed here and replaced by DepthClous.js, which didn't work in our case) 
+- `PointCloud.js` (TypeScript fork)
+
+
+---
+
 ros3djs [![Build Status](https://api.travis-ci.org/RobotWebTools/ros3djs.png)](https://travis-ci.org/RobotWebTools/ros3djs)
 =======
 
